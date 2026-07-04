@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Position;
 use App\Models\PriceSnapshot;
-use App\Models\Rule;
 use App\Services\IbkrAuthService;
 use Illuminate\View\View;
 

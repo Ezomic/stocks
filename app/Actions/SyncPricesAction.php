@@ -49,7 +49,7 @@ class SyncPricesAction
     }
 
     /**
-     * @param int[] $conids
+     * @param  int[]  $conids
      * @return mixed[]
      */
     private function fetchWithRetry(array $conids): array
