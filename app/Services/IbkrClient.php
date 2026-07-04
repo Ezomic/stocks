@@ -53,6 +53,7 @@ class IbkrClient
      * Fetch price snapshots for one or more conids.
      * Field 31 = last traded price.
      */
+    /** @param int[] $conids */
     public function snapshot(array $conids): Response
     {
         return $this->http()->get('/v1/api/iserver/marketdata/snapshot', [
@@ -66,6 +67,7 @@ class IbkrClient
         return $this->http()->get("/v1/api/portfolio/{$this->accountId}/positions/0");
     }
 
+    /** @param array<string, mixed> $order */
     public function placeOrder(array $order): Response
     {
         return $this->http()->post("/v1/api/iserver/account/{$this->accountId}/orders", [

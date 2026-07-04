@@ -26,8 +26,10 @@ class SyncOrderStatusAction
             return;
         }
 
-        $brokerOrders = collect($response->json('orders') ?? [])
-            ->keyBy(fn ($o) => (string) ($o['orderId'] ?? $o['order_id'] ?? ''));
+        /** @var array<int, array<string, mixed>> $orders */
+        $orders = $response->json('orders') ?? [];
+        $brokerOrders = collect($orders)
+            ->keyBy(fn (array $o): string => (string) ($o['orderId'] ?? $o['order_id'] ?? ''));
 
         foreach ($pending as $order) {
             $broker = $brokerOrders->get($order->broker_order_id);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,7 @@ use Illuminate\Support\Carbon;
 ])]
 class Order extends Model
 {
+    /** @use HasFactory<OrderFactory> */
     use HasFactory;
 
     protected function casts(): array
@@ -56,11 +58,13 @@ class Order extends Model
         ];
     }
 
+    /** @return BelongsTo<Position, $this> */
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
     }
 
+    /** @return BelongsTo<Rule, $this> */
     public function rule(): BelongsTo
     {
         return $this->belongsTo(Rule::class);

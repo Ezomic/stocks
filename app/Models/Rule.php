@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\RuleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
 ])]
 class Rule extends Model
 {
+    /** @use HasFactory<RuleFactory> */
     use HasFactory;
 
     protected function casts(): array
@@ -43,6 +45,7 @@ class Rule extends Model
         ];
     }
 
+    /** @return BelongsTo<Position, $this> */
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);

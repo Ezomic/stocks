@@ -33,7 +33,7 @@ class SyncPricesAction
                 $conid = (int) $position->ibkr_con_id;
                 $row = collect($data)->firstWhere('conid', $conid);
 
-                if (! $row || ! isset($row['31'])) {
+                if (! is_array($row) || ! isset($row['31'])) {
                     continue;
                 }
 
@@ -48,13 +48,27 @@ class SyncPricesAction
         });
     }
 
+    /**
+     * @param int[] $conids
+     * @return mixed[]
+     */
     private function fetchWithRetry(array $conids): array
     {
         $response = $this->client->snapshot($conids);
         $data = $response->json() ?? [];
 
+        if (! is_array($data)) {
+            return [];
+        }
+
         // IBKR returns empty or "not subscribed" on the first call — retry once
-        $hasData = collect($data)->contains(fn ($row) => isset($row['31']));
+        $hasData = false;
+        foreach ($data as $row) {
+            if (is_array($row) && isset($row['31'])) {
+                $hasData = true;
+                break;
+            }
+        }
 
         if (! $hasData) {
             sleep(1);
