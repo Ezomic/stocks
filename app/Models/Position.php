@@ -4,31 +4,49 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string $symbol
+ * @property string $broker_account_id
+ * @property string $account_mode
+ * @property string $quantity
+ * @property string $avg_buy_price
+ * @property string $currency
+ * @property string $market
+ * @property string|null $ibkr_con_id
+ * @property string|null $notes
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ */
+#[Fillable([
+    'symbol',
+    'broker_account_id',
+    'account_mode',
+    'quantity',
+    'avg_buy_price',
+    'currency',
+    'market',
+    'ibkr_con_id',
+    'notes',
+])]
 class Position extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'symbol',
-        'broker_account_id',
-        'account_mode',
-        'quantity',
-        'avg_buy_price',
-        'currency',
-        'market',
-        'ibkr_con_id',
-        'notes',
-    ];
-
-    protected $casts = [
-        'quantity' => 'decimal:6',
-        'avg_buy_price' => 'decimal:4',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'quantity' => 'decimal:6',
+            'avg_buy_price' => 'decimal:4',
+        ];
+    }
 
     public function rule(): HasOne
     {

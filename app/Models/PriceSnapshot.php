@@ -4,24 +4,36 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string $symbol
+ * @property string $price
+ * @property string $currency
+ * @property string $source
+ * @property Carbon $fetched_at
+ */
+#[Fillable([
+    'symbol',
+    'price',
+    'currency',
+    'source',
+    'fetched_at',
+])]
 class PriceSnapshot extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = [
-        'symbol',
-        'price',
-        'currency',
-        'source',
-        'fetched_at',
-    ];
-
-    protected $casts = [
-        'price' => 'decimal:4',
-        'fetched_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:4',
+            'fetched_at' => 'datetime',
+        ];
+    }
 
     public static function latestFor(string $symbol): ?self
     {
