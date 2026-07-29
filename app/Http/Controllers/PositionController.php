@@ -32,7 +32,7 @@ class PositionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'symbol' => ['required', 'string', 'max:20'],
             'broker_account_id' => ['required', 'string'],
             'account_mode' => ['required', 'in:paper,live'],
@@ -44,7 +44,7 @@ class PositionController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        Position::create($data);
+        Position::create($this->positionAttributes($request));
 
         return redirect('/positions')->with('success', 'Position added.');
     }
@@ -72,7 +72,7 @@ class PositionController extends Controller
 
     public function update(Request $request, Position $position): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'symbol' => ['required', 'string', 'max:20'],
             'broker_account_id' => ['required', 'string'],
             'account_mode' => ['required', 'in:paper,live'],
@@ -84,7 +84,7 @@ class PositionController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $position->update($data);
+        $position->update($this->positionAttributes($request));
 
         return redirect("/positions/{$position->id}")->with('success', 'Position updated.');
     }
@@ -94,5 +94,23 @@ class PositionController extends Controller
         $position->delete();
 
         return redirect('/positions')->with('success', 'Position deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function positionAttributes(Request $request): array
+    {
+        return [
+            'symbol' => $request->string('symbol')->toString(),
+            'broker_account_id' => $request->string('broker_account_id')->toString(),
+            'account_mode' => $request->string('account_mode')->toString(),
+            'quantity' => $request->float('quantity'),
+            'avg_buy_price' => $request->float('avg_buy_price'),
+            'currency' => $request->string('currency')->toString(),
+            'market' => $request->string('market')->toString(),
+            'ibkr_con_id' => $request->string('ibkr_con_id')->toString() ?: null,
+            'notes' => $request->string('notes')->toString() ?: null,
+        ];
     }
 }

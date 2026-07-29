@@ -23,9 +23,16 @@ class ImportPositionsFromIbkrAction
         $mode = config('ibkr.mode');
         $accountId = $this->client->accountId();
 
-        foreach ($response->json() ?? [] as $item) {
+        $rows = $response->json();
+
+        foreach (is_array($rows) ? $rows : [] as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
             $symbol = $item['ticker'] ?? $item['symbol'] ?? null;
-            $conid = (string) ($item['conid'] ?? '');
+            $conidValue = $item['conid'] ?? '';
+            $conid = is_scalar($conidValue) ? (string) $conidValue : '';
 
             if (! $symbol || ! $conid) {
                 continue;

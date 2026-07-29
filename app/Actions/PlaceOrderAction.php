@@ -35,20 +35,20 @@ class PlaceOrderAction
             ];
 
             $response = $this->client->placeOrder($payload);
-            $body = $response->json();
+            $first = $this->firstRow($response->json());
 
             // IBKR may return a confirmation challenge
-            if (isset($body[0]['messageIds'])) {
-                $replyId = $body[0]['id'];
-                $response = $this->client->confirmOrder($replyId);
-                $body = $response->json();
+            if (isset($first['messageIds'])) {
+                $replyId = $first['id'] ?? '';
+                $response = $this->client->confirmOrder(is_scalar($replyId) ? (string) $replyId : '');
+                $first = $this->firstRow($response->json());
             }
 
-            $brokerOrderId = $body[0]['order_id'] ?? $body[0]['orderId'] ?? null;
+            $brokerOrderId = $first['order_id'] ?? $first['orderId'] ?? null;
 
             $order->update([
                 'status' => 'placed',
-                'broker_order_id' => (string) $brokerOrderId,
+                'broker_order_id' => is_scalar($brokerOrderId) ? (string) $brokerOrderId : '',
                 'placed_at' => Carbon::now(),
             ]);
         } catch (\Throwable $e) {
@@ -58,6 +58,18 @@ class PlaceOrderAction
             ]);
         }
 
-        return $order->fresh();
+        return $order->refresh();
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private function firstRow(mixed $body): array
+    {
+        if (is_array($body) && isset($body[0]) && is_array($body[0])) {
+            return $body[0];
+        }
+
+        return [];
     }
 }

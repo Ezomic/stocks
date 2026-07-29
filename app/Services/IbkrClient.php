@@ -17,8 +17,11 @@ class IbkrClient
     public function __construct()
     {
         $mode = config('ibkr.mode');
-        $this->gatewayUrl = config("ibkr.{$mode}.gateway_url");
-        $this->accountId = config("ibkr.{$mode}.account_id");
+        $mode = is_string($mode) ? $mode : '';
+        $gatewayUrl = config("ibkr.{$mode}.gateway_url");
+        $accountId = config("ibkr.{$mode}.account_id");
+        $this->gatewayUrl = is_string($gatewayUrl) ? $gatewayUrl : '';
+        $this->accountId = is_string($accountId) ? $accountId : '';
     }
 
     public function accountId(): string

@@ -23,7 +23,7 @@ class SyncPricesAction
         }
 
         $positions->chunk(50)->each(function (Collection $chunk) {
-            $conids = $chunk->pluck('ibkr_con_id')->map(fn ($id) => (int) $id)->all();
+            $conids = $chunk->pluck('ibkr_con_id')->map(fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)->all();
 
             $data = $this->fetchWithRetry($conids);
 
@@ -39,7 +39,7 @@ class SyncPricesAction
 
                 PriceSnapshot::create([
                     'symbol' => $position->symbol,
-                    'price' => (float) $row['31'],
+                    'price' => is_numeric($row['31']) ? (float) $row['31'] : 0.0,
                     'currency' => $position->currency,
                     'source' => 'ibkr',
                     'fetched_at' => $fetchedAt,
