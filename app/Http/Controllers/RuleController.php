@@ -30,7 +30,7 @@ class RuleController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'position_id' => ['nullable', 'exists:positions,id'],
             'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
@@ -38,9 +38,7 @@ class RuleController extends Controller
             'cooldown_minutes' => ['required', 'integer', 'min:1'],
         ]);
 
-        $data['is_active'] = $request->boolean('is_active');
-
-        Rule::create($data);
+        Rule::create($this->ruleAttributes($request));
 
         return redirect('/rules')->with('success', 'Rule saved.');
     }
@@ -54,7 +52,7 @@ class RuleController extends Controller
 
     public function update(Request $request, Rule $rule): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'position_id' => ['nullable', 'exists:positions,id'],
             'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
@@ -62,9 +60,7 @@ class RuleController extends Controller
             'cooldown_minutes' => ['required', 'integer', 'min:1'],
         ]);
 
-        $data['is_active'] = $request->boolean('is_active');
-
-        $rule->update($data);
+        $rule->update($this->ruleAttributes($request));
 
         return redirect('/rules')->with('success', 'Rule updated.');
     }
@@ -74,5 +70,19 @@ class RuleController extends Controller
         $rule->delete();
 
         return redirect('/rules')->with('success', 'Rule deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function ruleAttributes(Request $request): array
+    {
+        return [
+            'position_id' => $request->integer('position_id') ?: null,
+            'take_profit_pct' => $request->filled('take_profit_pct') ? $request->float('take_profit_pct') : null,
+            'stop_loss_pct' => $request->filled('stop_loss_pct') ? $request->float('stop_loss_pct') : null,
+            'cooldown_minutes' => $request->integer('cooldown_minutes'),
+            'is_active' => $request->boolean('is_active'),
+        ];
     }
 }

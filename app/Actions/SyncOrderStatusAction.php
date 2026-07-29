@@ -29,7 +29,11 @@ class SyncOrderStatusAction
         /** @var array<int, array<string, mixed>> $orders */
         $orders = $response->json('orders') ?? [];
         $brokerOrders = collect($orders)
-            ->keyBy(fn (array $o): string => (string) ($o['orderId'] ?? $o['order_id'] ?? ''));
+            ->keyBy(function (array $o): string {
+                $key = $o['orderId'] ?? $o['order_id'] ?? '';
+
+                return is_scalar($key) ? (string) $key : '';
+            });
 
         foreach ($pending as $order) {
             $broker = $brokerOrders->get($order->broker_order_id);
@@ -38,7 +42,8 @@ class SyncOrderStatusAction
                 continue;
             }
 
-            $status = strtolower($broker['status'] ?? '');
+            $statusRaw = $broker['status'] ?? '';
+            $status = strtolower(is_string($statusRaw) ? $statusRaw : '');
 
             if ($status === 'filled') {
                 $order->update([
