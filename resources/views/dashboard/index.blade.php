@@ -1,0 +1,99 @@
+@extends('layout')
+@section('title', 'Dashboard')
+@section('content')
+
+<div class="auth-banner {{ $ibkrAuthenticated ? 'ok' : '' }}">
+    @if($ibkrAuthenticated)
+        &#9679; IBKR gateway connected ({{ config('ibkr.mode') }} mode)
+    @else
+        &#9679; IBKR gateway not authenticated &mdash;
+        <form method="POST" action="/ibkr/reauth" style="margin:0">
+            @csrf
+            <button type="submit" class="btn btn-sm">Re-authenticate</button>
+        </form>
+    @endif
+</div>
+
+<div class="stats-row">
+    <div class="stat">
+        <div class="stat-label">Portfolio value</div>
+        <div class="stat-value">{{ $totalValue > 0 ? '$'.number_format($totalValue, 2) : '—' }}</div>
+    </div>
+    <div class="stat">
+        <div class="stat-label">Total gain/loss</div>
+        <div class="stat-value @if($totalGainPct >= 0) gain @else loss @endif">
+            {{ $totalGainPct !== 0 ? sprintf('%+.2f', $totalGainPct).'%' : '—' }}
+        </div>
+    </div>
+    <div class="stat">
+        <div class="stat-label">Positions</div>
+        <div class="stat-value">{{ $positions->count() }}</div>
+    </div>
+</div>
+
+<div class="page-header">
+    <h1>Positions</h1>
+    <a href="/positions/create" class="btn btn-primary">+ Add position</a>
+</div>
+
+@if($positions->isEmpty())
+    <div class="card" style="color:var(--muted);text-align:center;padding:40px;">No positions yet. <a href="/positions/create">Add one</a> or <a href="/settings">import from IBKR</a>.</div>
+@else
+<div class="card" style="padding:0">
+    <table>
+        <thead><tr>
+            <th>Symbol</th><th>Market</th><th>Qty</th><th>Avg buy</th>
+            <th>Current</th><th>Gain/Loss</th><th>Rules</th><th></th>
+        </tr></thead>
+        <tbody>
+        @foreach($positions as $p)
+        <tr>
+            <td><a href="/positions/{{ $p->id }}"><strong>{{ $p->symbol }}</strong></a></td>
+            <td><span class="badge">{{ $p->market }}</span></td>
+            <td>{{ rtrim(rtrim($p->quantity, '0'), '.') }}</td>
+            <td>{{ $p->currency }} {{ number_format((float)$p->avg_buy_price, 2) }}</td>
+            <td>{{ $p->current_price !== null ? $p->currency.' '.number_format($p->current_price, 2) : '—' }}</td>
+            <td>
+                @if($p->gain_pct !== null)
+                    <span class="{{ $p->gain_pct >= 0 ? 'gain' : 'loss' }}">{{ sprintf('%+.2f', $p->gain_pct) }}%</span>
+                @else —
+                @endif
+            </td>
+            <td>
+                @if($p->rule)
+                    <span class="badge badge-blue">TP {{ $p->rule->take_profit_pct }}% / SL {{ $p->rule->stop_loss_pct }}%</span>
+                @else
+                    <span class="badge">No rule</span>
+                @endif
+            </td>
+            <td><a href="/positions/{{ $p->id }}" class="btn btn-sm">View</a></td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
+
+@if($recentOrders->isNotEmpty())
+<h2>Recent orders</h2>
+<div class="card" style="padding:0">
+    <table>
+        <thead><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Status</th><th>When</th></tr></thead>
+        <tbody>
+        @foreach($recentOrders as $o)
+        <tr>
+            <td>{{ $o->position->symbol }}</td>
+            <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
+            <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
+            <td>
+                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue', default=>'' } @endphp
+                <span class="badge {{ $cls }}">{{ $o->status }}</span>
+            </td>
+            <td style="color:var(--muted)">{{ $o->created_at->diffForHumans() }}</td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
+@endsection
