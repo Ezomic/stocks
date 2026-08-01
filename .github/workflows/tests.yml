@@ -1,6 +1,15 @@
 name: tests
 
-on: [push, pull_request]
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -21,6 +30,13 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
           extensions: pdo_sqlite
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
