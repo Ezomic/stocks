@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
+    fakeIbkrAuth();
 });
 
 function triggeringSnapshot(string $symbol): void

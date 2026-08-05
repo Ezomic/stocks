@@ -41,4 +41,16 @@ class PriceSnapshot extends Model
             ->orderByDesc('fetched_at')
             ->first();
     }
+
+    public function isStale(): bool
+    {
+        return $this->fetched_at->isBefore(Carbon::now()->subMinutes(self::maxAgeMinutes()));
+    }
+
+    public static function maxAgeMinutes(): int
+    {
+        $minutes = config('ibkr.max_price_age_minutes');
+
+        return is_numeric($minutes) ? (int) $minutes : 5;
+    }
 }

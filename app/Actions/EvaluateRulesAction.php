@@ -8,14 +8,25 @@ use App\Models\Order;
 use App\Models\Position;
 use App\Models\PriceSnapshot;
 use App\Models\Rule;
+use App\Services\IbkrAuthService;
 use Illuminate\Support\Carbon;
 
 class EvaluateRulesAction
 {
-    public function __construct(private readonly PlaceOrderAction $placeOrder) {}
+    public function __construct(
+        private readonly PlaceOrderAction $placeOrder,
+        private readonly IbkrAuthService $auth,
+    ) {}
 
     public function handle(): void
     {
+        // Price sync stops writing snapshots when the session drops, but the scheduler keeps
+        // calling this every minute. Evaluating on without a session means trading on whatever
+        // price happened to be captured before the stall.
+        if (! $this->auth->isAuthenticated()) {
+            return;
+        }
+
         $globalRule = Rule::whereNull('position_id')->where('is_active', true)->first();
 
         // An order that is placed but not yet reconciled has not reduced the position quantity
@@ -31,7 +42,7 @@ class EvaluateRulesAction
             ->each(function (Position $position) use ($globalRule) {
                 $snapshot = PriceSnapshot::latestFor($position->symbol);
 
-                if (! $snapshot) {
+                if (! $snapshot || $snapshot->isStale()) {
                     return;
                 }
 

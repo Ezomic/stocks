@@ -14,6 +14,14 @@
     @endif
 </div>
 
+@if($stalePriceCount > 0)
+<div class="auth-banner">
+    &#9679; {{ $stalePriceCount }} {{ Str::plural('position', $stalePriceCount) }}
+    {{ $stalePriceCount === 1 ? 'has' : 'have' }} no price newer than {{ $maxPriceAgeMinutes }} minutes.
+    Rules are not being evaluated for {{ $stalePriceCount === 1 ? 'it' : 'them' }} until price sync recovers.
+</div>
+@endif
+
 @if($inactiveAccountCount > 0)
 <div class="auth-banner">
     &#9679; {{ $inactiveAccountCount }} {{ Str::plural('position', $inactiveAccountCount) }}
@@ -61,7 +69,12 @@
             <td><span class="badge">{{ $p->market }}</span></td>
             <td>{{ rtrim(rtrim($p->quantity, '0'), '.') }}</td>
             <td>{{ $p->currency }} {{ number_format((float)$p->avg_buy_price, 2) }}</td>
-            <td>{{ $p->current_price !== null ? $p->currency.' '.number_format($p->current_price, 2) : '—' }}</td>
+            <td>
+                {{ $p->current_price !== null ? $p->currency.' '.number_format($p->current_price, 2) : '—' }}
+                @if($p->price_is_stale && $p->current_price !== null)
+                    <span class="badge" title="Older than {{ $maxPriceAgeMinutes }} minutes">stale</span>
+                @endif
+            </td>
             <td>
                 @if($p->gain_pct !== null)
                     <span class="{{ $p->gain_pct >= 0 ? 'gain' : 'loss' }}">{{ sprintf('%+.2f', $p->gain_pct) }}%</span>
