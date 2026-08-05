@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\Rule;
 use App\Models\Setting;
 use App\Services\IbkrClient;
+use App\Services\OrderNotifier;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -16,7 +17,10 @@ use RuntimeException;
 
 class PlaceOrderAction
 {
-    public function __construct(private readonly IbkrClient $client) {}
+    public function __construct(
+        private readonly IbkrClient $client,
+        private readonly OrderNotifier $notifier,
+    ) {}
 
     public function handle(Position $position, string $side, ?Rule $rule = null): Order
     {
@@ -67,7 +71,11 @@ class PlaceOrderAction
             ]);
         }
 
-        return $order->refresh();
+        $order->refresh();
+
+        $this->notifier->notify($order, $order->status);
+
+        return $order;
     }
 
     /**

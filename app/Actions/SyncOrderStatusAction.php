@@ -7,11 +7,15 @@ namespace App\Actions;
 use App\Models\Order;
 use App\Models\Position;
 use App\Services\IbkrClient;
+use App\Services\OrderNotifier;
 use Illuminate\Support\Carbon;
 
 class SyncOrderStatusAction
 {
-    public function __construct(private readonly IbkrClient $client) {}
+    public function __construct(
+        private readonly IbkrClient $client,
+        private readonly OrderNotifier $notifier,
+    ) {}
 
     public function handle(): void
     {
@@ -57,6 +61,7 @@ class SyncOrderStatusAction
                 ]);
 
                 $this->applyFillToPosition($order, $this->filledQuantity($broker, $order));
+                $this->notifier->notify($order->refresh(), 'filled');
             } elseif (in_array($status, ['cancelled', 'inactive'])) {
                 $order->update(['status' => 'cancelled']);
             }
