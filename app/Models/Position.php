@@ -6,6 +6,8 @@ namespace App\Models;
 
 use Database\Factories\PositionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,6 +53,34 @@ class Position extends Model
             'quantity' => 'decimal:6',
             'avg_buy_price' => 'decimal:4',
         ];
+    }
+
+    /**
+     * The positions the app may price and trade right now. The table deliberately holds both
+     * paper and live rows, so anything belonging to the other mode or another broker account
+     * must never reach the gateway that IBKR_MODE currently points at.
+     *
+     * @param  Builder<$this>  $query
+     */
+    #[Scope]
+    protected function forActiveAccount(Builder $query): void
+    {
+        $query->where('account_mode', self::activeMode())
+            ->where('broker_account_id', self::activeAccountId());
+    }
+
+    public static function activeMode(): string
+    {
+        $mode = config('ibkr.mode');
+
+        return is_string($mode) ? $mode : '';
+    }
+
+    public static function activeAccountId(): string
+    {
+        $accountId = config('ibkr.'.self::activeMode().'.account_id');
+
+        return is_string($accountId) ? $accountId : '';
     }
 
     /** @return HasOne<Rule, $this> */

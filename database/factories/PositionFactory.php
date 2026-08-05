@@ -19,8 +19,8 @@ class PositionFactory extends Factory
     {
         return [
             'symbol' => strtoupper(fake()->lexify('???')),
-            'broker_account_id' => 'DU'.fake()->numerify('#######'),
-            'account_mode' => 'paper',
+            'broker_account_id' => Position::activeAccountId(),
+            'account_mode' => Position::activeMode(),
             'quantity' => fake()->randomFloat(2, 1, 100),
             'avg_buy_price' => fake()->randomFloat(2, 10, 500),
             'currency' => 'USD',
