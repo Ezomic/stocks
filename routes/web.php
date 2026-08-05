@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
@@ -29,5 +30,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/sync-prices', [SettingsController::class, 'syncPrices'])->name('settings.sync-prices');
     Route::post('/settings/evaluate-rules', [SettingsController::class, 'evaluateRules'])->name('settings.evaluate-rules');
     Route::post('/settings/sync-orders', [SettingsController::class, 'syncOrders'])->name('settings.sync-orders');
+    Route::post('/settings/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/settings/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+
     Route::post('/ibkr/reauth', [SettingsController::class, 'reauth'])->name('ibkr.reauth');
 });
