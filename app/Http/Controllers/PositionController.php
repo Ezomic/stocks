@@ -14,8 +14,8 @@ class PositionController extends Controller
 {
     public function index(): View
     {
-        $positions = Position::with('rule')->get()->map(function (Position $position) {
-            $snapshot = PriceSnapshot::latestFor($position->symbol);
+        $positions = Position::with(['rule', 'latestSnapshot'])->get()->map(function (Position $position) {
+            $snapshot = $position->latestSnapshot;
             $position->current_price = $snapshot ? (float) $snapshot->price : null;
             $position->gain_pct = $snapshot ? $position->gainPct((float) $snapshot->price) : null;
 

@@ -98,6 +98,17 @@ class IbkrClient
         return Http::withOptions([
             'verify' => false,
             'base_uri' => $this->gatewayUrl,
-        ])->acceptJson()->contentType('application/json');
+        ])
+            ->timeout($this->seconds('timeout_seconds', 10))
+            ->connectTimeout($this->seconds('connect_timeout_seconds', 3))
+            ->acceptJson()
+            ->contentType('application/json');
+    }
+
+    private function seconds(string $key, int $default): int
+    {
+        $value = config("ibkr.{$key}");
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }
