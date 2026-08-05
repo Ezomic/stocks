@@ -83,6 +83,75 @@
 </div>
 
 <div class="card" style="max-width:600px">
+    <h2>Two-factor authentication</h2>
+
+    @error('code')
+        <div class="alert alert-error">{{ $message }}</div>
+    @enderror
+
+    @if($twoFactorConfirmed)
+        <div style="display:flex;align-items:center;gap:16px">
+            <span class="badge badge-green">On</span>
+            <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
+                A code from your authenticator app is required after your password.
+            </p>
+            <form method="POST" action="{{ route('two-factor.destroy') }}" style="margin:0"
+                  onsubmit="return confirm('Turn off two-factor authentication? Your password becomes the only thing protecting this account.')">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn btn-danger">Turn off</button>
+            </form>
+        </div>
+
+        <form method="POST" action="{{ route('two-factor.recovery-codes') }}" style="margin-top:16px"
+              onsubmit="return confirm('Generate new recovery codes? The current ones stop working.')">
+            @csrf
+            <button type="submit" class="btn btn-sm">Generate new recovery codes</button>
+        </form>
+    @elseif($twoFactorPending)
+        <p style="font-size:13px;color:var(--muted);margin-top:0">
+            Scan this with your authenticator app, then enter a code to finish.
+        </p>
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+            <div style="background:#fff;padding:8px;border-radius:var(--radius);line-height:0">{!! $twoFactorQr !!}</div>
+            <div style="flex:1;min-width:220px">
+                <div style="font-size:12px;color:var(--muted)">Or enter this key by hand</div>
+                <code style="display:block;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px;font-size:12px;margin:6px 0 16px">{{ $twoFactorSecret }}</code>
+                <form method="POST" action="{{ route('two-factor.confirm') }}" style="display:flex;gap:8px">
+                    @csrf
+                    <input type="text" name="code" placeholder="123456" inputmode="numeric"
+                           autocomplete="one-time-code" style="flex:1">
+                    <button type="submit" class="btn btn-primary">Confirm</button>
+                </form>
+            </div>
+        </div>
+    @else
+        <div style="display:flex;align-items:center;gap:16px">
+            <span class="badge badge-red">Off</span>
+            <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
+                Your password is the only thing standing between the internet and an account that can place trades.
+            </p>
+            <form method="POST" action="{{ route('two-factor.store') }}" style="margin:0">
+                @csrf
+                <button type="submit" class="btn btn-primary">Turn on</button>
+            </form>
+        </div>
+    @endif
+
+    @if($twoFactorRecoveryCodes !== [])
+        <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+                Recovery codes. Each one works once, for when you lose the authenticator.
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+                @foreach($twoFactorRecoveryCodes as $recoveryCode)
+                    <code style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px;font-size:12px">{{ $recoveryCode }}</code>
+                @endforeach
+            </div>
+        </div>
+    @endif
+</div>
+
+<div class="card" style="max-width:600px">
     <h2>API tokens</h2>
     <p style="font-size:13px;color:var(--muted);margin-top:0">Personal access tokens authenticate requests to the API. Treat them like passwords.</p>
 

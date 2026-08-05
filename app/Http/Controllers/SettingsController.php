@@ -10,6 +10,7 @@ use App\Actions\SyncPricesAction;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\IbkrAuthService;
+use App\Services\TwoFactorAuthenticator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,12 +18,17 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class SettingsController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, TwoFactorAuthenticator $twoFactor): View
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
         return view('settings.index', [
+            'twoFactorConfirmed' => $user->hasTwoFactorEnabled(),
+            'twoFactorPending' => $user->two_factor_secret !== null && $user->two_factor_confirmed_at === null,
+            'twoFactorSecret' => $user->two_factor_secret,
+            'twoFactorQr' => $user->two_factor_secret === null ? '' : $twoFactor->qrCodeSvg($user),
+            'twoFactorRecoveryCodes' => $user->two_factor_recovery_codes ?? [],
             'mode' => config('ibkr.mode'),
             'paperGatewayUrl' => config('ibkr.paper.gateway_url'),
             'liveGatewayUrl' => config('ibkr.live.gateway_url'),
