@@ -2,6 +2,13 @@
 @section('title', 'Dashboard')
 @section('content')
 
+@unless($tradingEnabled)
+<div class="auth-banner">
+    &#9679; <strong>Automated trading is paused.</strong> No orders will be placed.
+    <a href="/settings" class="btn btn-sm">Resume in settings</a>
+</div>
+@endunless
+
 <div class="auth-banner {{ $ibkrAuthenticated ? 'ok' : '' }}">
     @if($ibkrAuthenticated)
         &#9679; IBKR gateway connected ({{ config('ibkr.mode') }} mode)

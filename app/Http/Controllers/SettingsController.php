@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\EvaluateRulesAction;
 use App\Actions\SyncOrderStatusAction;
 use App\Actions\SyncPricesAction;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\IbkrAuthService;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +28,7 @@ class SettingsController extends Controller
             'liveGatewayUrl' => config('ibkr.live.gateway_url'),
             'paperAccountId' => config('ibkr.paper.account_id'),
             'liveAccountId' => config('ibkr.live.account_id'),
+            'tradingEnabled' => Setting::tradingEnabled(),
             'tokens' => $user->tokens()
                 ->latest()
                 ->get()
@@ -38,6 +40,17 @@ class SettingsController extends Controller
                 ])
                 ->all(),
         ]);
+    }
+
+    public function updateTrading(Request $request): RedirectResponse
+    {
+        $enabled = $request->boolean('trading_enabled');
+
+        Setting::setBool(Setting::TRADING_ENABLED, $enabled);
+
+        return back()->with('success', $enabled
+            ? 'Automated trading resumed.'
+            : 'Automated trading paused. No orders will be placed.');
     }
 
     public function syncPrices(SyncPricesAction $action): RedirectResponse

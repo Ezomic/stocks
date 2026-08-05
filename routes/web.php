@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings/trading', [SettingsController::class, 'updateTrading'])->name('settings.trading');
     Route::post('/settings/sync-prices', [SettingsController::class, 'syncPrices'])->name('settings.sync-prices');
     Route::post('/settings/evaluate-rules', [SettingsController::class, 'evaluateRules'])->name('settings.evaluate-rules');
     Route::post('/settings/sync-orders', [SettingsController::class, 'syncOrders'])->name('settings.sync-orders');

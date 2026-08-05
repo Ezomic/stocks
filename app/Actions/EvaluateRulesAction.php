@@ -8,8 +8,10 @@ use App\Models\Order;
 use App\Models\Position;
 use App\Models\PriceSnapshot;
 use App\Models\Rule;
+use App\Models\Setting;
 use App\Services\IbkrAuthService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class EvaluateRulesAction
 {
@@ -20,6 +22,12 @@ class EvaluateRulesAction
 
     public function handle(): void
     {
+        if (! Setting::tradingEnabled()) {
+            Log::info('Automated trading is paused. Skipping rule evaluation.');
+
+            return;
+        }
+
         // Price sync stops writing snapshots when the session drops, but the scheduler keeps
         // calling this every minute. Evaluating on without a session means trading on whatever
         // price happened to be captured before the stall.

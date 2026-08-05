@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Position;
 use App\Models\PriceSnapshot;
+use App\Models\Setting;
 use App\Services\IbkrAuthService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\View\View;
@@ -52,6 +53,7 @@ class DashboardController extends Controller
             'recentOrders' => Order::with('position')->latest()->limit(5)->get(),
             'inactiveAccountCount' => Position::count() - count($tradedIds),
             'stalePriceCount' => $stalePriceCount,
+            'tradingEnabled' => Setting::tradingEnabled(),
             'maxPriceAgeMinutes' => PriceSnapshot::maxAgeMinutes(),
             'activeMode' => Position::activeMode(),
             'activeAccountId' => Position::activeAccountId(),
