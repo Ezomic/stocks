@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\IbkrFakeResponses;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -17,6 +18,6 @@ pest()->extend(TestCase::class)
 function fakeIbkrAuth(bool $authenticated = true): void
 {
     Http::fake([
-        '*/iserver/auth/status' => Http::response(['authenticated' => $authenticated], 200),
+        '*/iserver/auth/status' => Http::response(IbkrFakeResponses::authenticated($authenticated), 200),
     ]);
 }
