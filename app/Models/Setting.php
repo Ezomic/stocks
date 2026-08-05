@@ -20,6 +20,8 @@ class Setting extends Model
 {
     public const TRADING_ENABLED = 'trading_enabled';
 
+    public const DRY_RUN = 'dry_run';
+
     public static function bool(string $key, bool $default): bool
     {
         $setting = self::where('key', $key)->first();
@@ -39,5 +41,10 @@ class Setting extends Model
     public static function tradingEnabled(): bool
     {
         return self::bool(self::TRADING_ENABLED, true);
+    }
+
+    public static function dryRun(): bool
+    {
+        return self::bool(self::DRY_RUN, false);
     }
 }

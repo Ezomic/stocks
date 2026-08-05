@@ -29,6 +29,7 @@ class SettingsController extends Controller
             'paperAccountId' => config('ibkr.paper.account_id'),
             'liveAccountId' => config('ibkr.live.account_id'),
             'tradingEnabled' => Setting::tradingEnabled(),
+            'dryRun' => Setting::dryRun(),
             'tokens' => $user->tokens()
                 ->latest()
                 ->get()
@@ -51,6 +52,17 @@ class SettingsController extends Controller
         return back()->with('success', $enabled
             ? 'Automated trading resumed.'
             : 'Automated trading paused. No orders will be placed.');
+    }
+
+    public function updateDryRun(Request $request): RedirectResponse
+    {
+        $dryRun = $request->boolean('dry_run');
+
+        Setting::setBool(Setting::DRY_RUN, $dryRun);
+
+        return back()->with('success', $dryRun
+            ? 'Dry run enabled. Rules will record what they would have done without sending anything to IBKR.'
+            : 'Dry run disabled. Triggered rules will place real orders again.');
     }
 
     public function syncPrices(SyncPricesAction $action): RedirectResponse
