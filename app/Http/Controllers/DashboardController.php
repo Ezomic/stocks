@@ -19,11 +19,19 @@ class DashboardController extends Controller
     {
         $positions = Position::with(['rule', 'orders' => fn (Relation $q) => $q->latest()->limit(1)])->get();
 
-        $positions = $positions->map(function (Position $position) {
+        $tradedIds = Position::forActiveAccount()->pluck('id')->all();
+        $stalePriceCount = 0;
+
+        $positions = $positions->map(function (Position $position) use ($tradedIds, &$stalePriceCount) {
             $snapshot = PriceSnapshot::latestFor($position->symbol);
             $position->current_price = $snapshot ? (float) $snapshot->price : null;
             $position->gain_pct = $snapshot ? $position->gainPct((float) $snapshot->price) : null;
             $position->current_value = $snapshot ? (float) $snapshot->price * (float) $position->quantity : null;
+            $position->price_is_stale = $snapshot === null || $snapshot->isStale();
+
+            if ($position->price_is_stale && in_array($position->id, $tradedIds, true)) {
+                $stalePriceCount++;
+            }
 
             return $position;
         });
@@ -38,7 +46,9 @@ class DashboardController extends Controller
             'totalGainPct' => $totalGainPct,
             'ibkrAuthenticated' => $this->auth->isAuthenticated(),
             'recentOrders' => Order::with('position')->latest()->limit(5)->get(),
-            'inactiveAccountCount' => Position::count() - Position::forActiveAccount()->count(),
+            'inactiveAccountCount' => Position::count() - count($tradedIds),
+            'stalePriceCount' => $stalePriceCount,
+            'maxPriceAgeMinutes' => PriceSnapshot::maxAgeMinutes(),
             'activeMode' => Position::activeMode(),
             'activeAccountId' => Position::activeAccountId(),
         ]);

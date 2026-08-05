@@ -10,4 +10,11 @@ return [
         'account_id' => env('IBKR_LIVE_ACCOUNT_ID'),
     ],
     'mode' => env('IBKR_MODE', 'paper'),
+
+    /*
+     * How old a price snapshot may be and still be traded on. Price sync stops silently when
+     * the gateway session drops, so without this the engine would keep firing rules against
+     * a price that no longer reflects the market.
+     */
+    'max_price_age_minutes' => (int) env('IBKR_MAX_PRICE_AGE_MINUTES', 5),
 ];

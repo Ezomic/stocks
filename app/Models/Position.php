@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $current_price
  * @property float|null $gain_pct
  * @property float|null $current_value
+ * @property bool|null $price_is_stale
  */
 #[Fillable([
     'symbol',

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
+    fakeIbkrAuth();
 });
 
 /** @param array<string, mixed> $overrides */

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
+    fakeIbkrAuth();
 });
 
 it('places a sell order when take-profit threshold is crossed', function (): void {
