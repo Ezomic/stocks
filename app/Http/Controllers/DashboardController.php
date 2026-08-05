@@ -17,13 +17,17 @@ class DashboardController extends Controller
 
     public function index(): View
     {
-        $positions = Position::with(['rule', 'orders' => fn (Relation $q) => $q->latest()->limit(1)])->get();
+        $positions = Position::with([
+            'latestSnapshot',
+            'rule',
+            'orders' => fn (Relation $q) => $q->latest()->limit(1),
+        ])->get();
 
         $tradedIds = Position::forActiveAccount()->pluck('id')->all();
         $stalePriceCount = 0;
 
         $positions = $positions->map(function (Position $position) use ($tradedIds, &$stalePriceCount) {
-            $snapshot = PriceSnapshot::latestFor($position->symbol);
+            $snapshot = $position->latestSnapshot;
             $position->current_price = $snapshot ? (float) $snapshot->price : null;
             $position->gain_pct = $snapshot ? $position->gainPct((float) $snapshot->price) : null;
             $position->current_value = $snapshot ? (float) $snapshot->price * (float) $position->quantity : null;
