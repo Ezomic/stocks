@@ -29,6 +29,7 @@ php artisan ibkr:sync-prices        # fetch latest prices (runs via scheduler)
 php artisan ibkr:evaluate-rules     # check TP/SL thresholds (runs via scheduler)
 php artisan ibkr:sync-orders        # update order statuses (runs via scheduler)
 php artisan ibkr:tickle             # keep gateway session alive (runs via scheduler)
+php artisan prices:prune            # delete snapshots past the retention window (runs daily)
 ```
 
 ## IBKR Client Portal Gateway setup
@@ -100,6 +101,8 @@ The scheduler runs:
 - `ibkr:evaluate-rules` — every minute
 - `ibkr:sync-orders` — every 2 minutes
 - `ibkr:tickle` — every 15 minutes
+- `queue:work --stop-when-empty` — every minute, delivers queued order notifications
+- `prices:prune` — daily at 02:15
 
 ## Routes
 
@@ -108,7 +111,9 @@ The scheduler runs:
 | Route | Controller | Notes |
 |-------|-----------|-------|
 | `GET /login` | `Auth\LoginController@showForm` | |
-| `POST /login` | `Auth\LoginController@login` | |
+| `POST /login` | `Auth\LoginController@login` | Throttled: 5 per minute per email + IP |
+| `GET /two-factor-challenge` | `Auth\TwoFactorChallengeController@show` | Only with a pending login in session |
+| `POST /two-factor-challenge` | `Auth\TwoFactorChallengeController@store` | TOTP or recovery code, throttled |
 
 ### Protected (behind `auth` middleware)
 
@@ -131,9 +136,17 @@ The scheduler runs:
 | `DELETE /rules/{id}` | `RuleController@destroy` | |
 | `GET /orders` | `OrderController@index` | Read-only, paginated |
 | `GET /settings` | `SettingsController@index` | |
+| `POST /settings/trading` | `SettingsController@updateTrading` | Kill switch: pause/resume all trading |
+| `POST /settings/dry-run` | `SettingsController@updateDryRun` | Toggle dry run |
 | `POST /settings/sync-prices` | `SettingsController@syncPrices` | Manual trigger |
 | `POST /settings/evaluate-rules` | `SettingsController@evaluateRules` | Manual trigger |
 | `POST /settings/sync-orders` | `SettingsController@syncOrders` | Manual trigger |
+| `POST /settings/two-factor` | `TwoFactorController@store` | Begin 2FA enrolment |
+| `POST /settings/two-factor/confirm` | `TwoFactorController@confirm` | Confirm with a TOTP code |
+| `POST /settings/two-factor/recovery-codes` | `TwoFactorController@recoveryCodes` | Regenerate recovery codes |
+| `DELETE /settings/two-factor` | `TwoFactorController@destroy` | Turn 2FA off |
+| `POST /settings/api-tokens` | `ApiTokenController@store` | |
+| `DELETE /settings/api-tokens/{token}` | `ApiTokenController@destroy` | |
 | `POST /ibkr/reauth` | `SettingsController@reauth` | Re-authenticate gateway session |
 
 ## Architecture
@@ -142,23 +155,26 @@ The scheduler runs:
 
 | Model | Notes |
 |-------|-------|
-| `Position` | Symbol, quantity, avg buy price, IBKR conid. `gainPct(float): float` helper. |
-| `Rule` | Take-profit %, stop-loss %, cooldown. `isInCooldown(): bool`. `position_id` null = global default. |
-| `Order` | Append-only order log. Statuses: `pending → placed → filled / cancelled / failed`. |
-| `PriceSnapshot` | Append-only. No `updated_at`. Index on `(symbol, fetched_at)`. |
-| `User` | Single admin user, created by seeder. |
+| `Position` | Symbol, quantity, avg buy price, IBKR conid. `gainPct(float): float`. `last_triggered_at` holds the cooldown. `forActiveAccount()` scope limits queries to the account `IBKR_MODE` resolves to. |
+| `Rule` | Take-profit %, stop-loss %, cooldown length. `isInCooldown(Position): bool` — the window is per position, the rule only supplies its length. `position_id` null = global default. One rule per position (unique index), one global rule (validated). |
+| `Order` | Append-only order log. Statuses: `pending → placed → filled / cancelled / failed`, plus `simulated` for dry-run records. |
+| `PriceSnapshot` | Append-only. No `updated_at`. Index on `(symbol, fetched_at)`. `isStale()` against `ibkr.max_price_age_minutes`. |
+| `Setting` | Key/value store for runtime toggles: `trading_enabled` (default on), `dry_run` (default off). |
+| `User` | Single admin user, created by seeder. Optional TOTP 2FA; secret and recovery codes encrypted at rest. |
 
 ### Services (`app/Services/`)
 
-- **`IbkrClient`** — thin `Http::` wrapper for all Client Portal API calls. Reads `config('ibkr.mode')` in constructor to pick the right gateway URL and account ID. All calls use `verify => false` (self-signed cert).
-- **`IbkrAuthService`** — session keepalive (`tickle`), status check, reauthentication with polling.
+- **`IbkrClient`** — thin `Http::` wrapper for all Client Portal API calls. Reads `config('ibkr.mode')` in constructor to pick the right gateway URL and account ID. All calls use `verify => false` (self-signed cert) and explicit short timeouts.
+- **`IbkrAuthService`** — session keepalive (`tickle`), status check, reauthentication with polling. The status is cached briefly so a page render never waits on the gateway.
+- **`OrderNotifier`** — logs every order event, then dispatches a queued notification. Swallows dispatch failures so a mail outage cannot take a scheduled run down.
+- **`TwoFactorAuthenticator`** — TOTP secrets, verification, QR code SVG and single-use recovery codes.
 
 ### Actions (`app/Actions/`)
 
-- **`SyncPricesAction`** — fetches prices in batches of 50 conids. Retries once on empty snapshot response (IBKR quirk: first call returns `{}`).
-- **`EvaluateRulesAction`** — for each active position, finds the position-level rule or falls back to the global default. Fires `PlaceOrderAction` when TP or SL threshold is crossed and the rule is not in cooldown.
-- **`PlaceOrderAction`** — places a market order via IBKR. Handles the confirmation-challenge response shape (`messageIds`). Creates an `Order` record; marks it `failed` on exception.
-- **`SyncOrderStatusAction`** — polls `GET /v1/api/iserver/account/orders` and updates `placed` orders to `filled` or `cancelled`.
+- **`SyncPricesAction`** — fetches prices in batches of 50 conids, for the active account only. Retries once on empty snapshot response (IBKR quirk: first call returns `{}`).
+- **`EvaluateRulesAction`** — the safety gate. In order it: stops if trading is paused, stops if the gateway session is down, skips positions outside the active account, skips positions with no quantity left, skips positions with an order still in flight, skips stale prices, then fires `PlaceOrderAction` when a threshold is crossed and the position is not in cooldown. Stamps the cooldown on the position.
+- **`PlaceOrderAction`** — places a market order via IBKR. Handles the confirmation-challenge response shape (`messageIds`). Checks every response and only records `placed` once a non-empty broker order id comes back; anything else is `failed` with the reason. Writes a `simulated` record and skips the gateway entirely during a dry run.
+- **`SyncOrderStatusAction`** — polls `GET /v1/api/iserver/account/orders`, updates `placed` orders to `filled` or `cancelled`, and applies a fill to the position quantity so the same holding is never sold twice.
 - **`ImportPositionsFromIbkrAction`** — upserts positions from `GET /v1/api/portfolio/{accountId}/positions/0`.
 
 ### Scheduler (`routes/console.php`)
@@ -168,14 +184,33 @@ Schedule::command('ibkr:sync-prices')->everyMinute()->withoutOverlapping();
 Schedule::command('ibkr:evaluate-rules')->everyMinute()->withoutOverlapping();
 Schedule::command('ibkr:sync-orders')->everyTwoMinutes()->withoutOverlapping();
 Schedule::command('ibkr:tickle')->everyFifteenMinutes();
+Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
+Schedule::command('prices:prune')->dailyAt('02:15');
 ```
 
 `withoutOverlapping()` is critical — prevents double-triggering rules if a cycle runs slow.
 
 ## Caching
 
-No application-level cache. SQLite WAL mode is enabled in `AppServiceProvider::boot()` to
-handle concurrent scheduler writes without lock errors.
+The only cached value is the IBKR gateway auth status, held for
+`IBKR_AUTH_STATUS_TTL_SECONDS` (default 10) so repeated dashboard renders and the per-minute
+rule evaluation share one answer. `IbkrAuthService::reauthenticate()` clears and repopulates it.
+
+SQLite WAL mode is enabled in `AppServiceProvider::boot()` to handle concurrent scheduler
+writes without lock errors.
+
+## Safety controls
+
+Two runtime switches live in the `settings` table and are toggled from the settings page:
+
+- **Trading enabled** (default on) — the kill switch. `EvaluateRulesAction` returns early when
+  off. Price and order-status sync keep running so the portfolio view stays accurate.
+- **Dry run** (default off) — triggered rules record a `simulated` order instead of calling the
+  gateway. Cooldown behaves exactly as in a real run, and a simulated order blocks further
+  evaluation of that position *while dry run is on*, standing in for the sale that would have
+  closed it. Once dry run is off those records are history and block nothing.
+
+Both are surfaced as banners on the dashboard whenever they are not in their normal state.
 
 ## Paper vs live trading
 
@@ -188,8 +223,25 @@ IBKR_MODE=paper   # or: live
 `IbkrClient` reads this once in its constructor and routes all calls to the correct gateway
 URL and account ID. Paper account IDs start with `DU`; live account IDs start with `U`.
 
-Keep `account_mode` on the `positions` table accurate — it lets you hold both paper and live
-positions in the same database during the transition period.
+Keep `account_mode` and `broker_account_id` on the `positions` table accurate. They let you
+hold both paper and live positions in the same database during the transition, and price sync
+and rule evaluation both scope to the account `IBKR_MODE` currently resolves to, so a stale
+paper row can never be traded against the live account.
+
+## Configuration
+
+Beyond the gateway settings above:
+
+| Env | Default | What it does |
+|-----|---------|--------------|
+| `IBKR_MAX_PRICE_AGE_MINUTES` | 5 | How old a price may be and still be traded on |
+| `IBKR_TIMEOUT_SECONDS` | 10 | Total timeout on every gateway call |
+| `IBKR_CONNECT_TIMEOUT_SECONDS` | 3 | Connect timeout on every gateway call |
+| `IBKR_AUTH_STATUS_TTL_SECONDS` | 10 | How long the session status is cached |
+| `STOCKS_SNAPSHOT_RETENTION_DAYS` | 30 | Price snapshot retention; 0 keeps everything |
+| `STOCKS_NOTIFICATIONS_ENABLED` | true | Master switch for order notifications |
+| `STOCKS_NOTIFICATION_CHANNELS` | mail | Comma separated notification channels |
+| `STOCKS_NOTIFICATION_EVENTS` | placed,filled,failed | Which order events notify |
 
 ## Key gotchas
 
@@ -213,10 +265,15 @@ positions in the same database during the transition period.
 5. **Crypto symbols** — IBKR uses `secType: CRYPTO` and symbol format `BTC.USD`. Set
    `market = CRYPTO` on the position; the conid search endpoint accepts `secType` as a param.
 
-6. **Pre-live checklist** — before setting `IBKR_MODE=live`:
-   - Audit `PlaceOrderAction` — double-check order quantity and side logic
+6. **Stale prices are not traded on** — price sync stops silently when the session drops, so
+   rule evaluation ignores any snapshot older than `IBKR_MAX_PRICE_AGE_MINUTES` (default 5) and
+   refuses to run at all without an authenticated session. Both show on the dashboard.
+
+7. **Pre-live checklist** — before setting `IBKR_MODE=live`:
+   - Run for a week with dry run on and read back the simulated orders
    - Review cooldown values on all rules
-   - Consider adding 2FA to the app login
+   - Confirm no leftover paper positions are still in the table (the dashboard warns about them)
+   - Turn on two-factor authentication in settings
 
 ## Testing
 
@@ -226,8 +283,12 @@ php artisan test --filter EvaluateRulesActionTest
 ```
 
 - `RefreshDatabase` in `TestCase`
-- `Http::fake()` for all IBKR calls — never hit the real gateway in tests
-- `tests/Support/IbkrFakeResponses.php` — canned JSON payloads (to be built out as tests expand)
+- `Http::fake()` for all IBKR calls — never hit the real gateway in tests, and
+  `Http::preventStrayRequests()` in every action test so an unfaked call fails loudly
+- `tests/Support/IbkrFakeResponses.php` — canned gateway payloads including the quirks: the
+  confirmation challenge, the first-call snapshot with no price, the auth failure
+- `fakeIbkrAuth()` in `tests/Pest.php` — rule evaluation needs a live session before it does
+  anything, so register this first; `Http::fake()` merges stubs and the first match wins
 
 ## Linear
 
