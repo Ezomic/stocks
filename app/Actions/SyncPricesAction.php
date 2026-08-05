@@ -16,7 +16,7 @@ class SyncPricesAction
 
     public function handle(): void
     {
-        $positions = Position::whereNotNull('ibkr_con_id')->get();
+        $positions = Position::forActiveAccount()->whereNotNull('ibkr_con_id')->get();
 
         if ($positions->isEmpty()) {
             return;

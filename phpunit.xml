@@ -32,5 +32,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="IBKR_MODE" value="paper"/>
+        <env name="IBKR_PAPER_ACCOUNT_ID" value="DU0000001"/>
+        <env name="IBKR_LIVE_ACCOUNT_ID" value="U0000001"/>
     </php>
 </phpunit>

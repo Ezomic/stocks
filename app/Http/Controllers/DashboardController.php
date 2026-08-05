@@ -38,6 +38,9 @@ class DashboardController extends Controller
             'totalGainPct' => $totalGainPct,
             'ibkrAuthenticated' => $this->auth->isAuthenticated(),
             'recentOrders' => Order::with('position')->latest()->limit(5)->get(),
+            'inactiveAccountCount' => Position::count() - Position::forActiveAccount()->count(),
+            'activeMode' => Position::activeMode(),
+            'activeAccountId' => Position::activeAccountId(),
         ]);
     }
 }

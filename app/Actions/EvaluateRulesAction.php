@@ -17,7 +17,7 @@ class EvaluateRulesAction
     {
         $globalRule = Rule::whereNull('position_id')->where('is_active', true)->first();
 
-        Position::all()->each(function (Position $position) use ($globalRule) {
+        Position::forActiveAccount()->get()->each(function (Position $position) use ($globalRule) {
             $snapshot = PriceSnapshot::latestFor($position->symbol);
 
             if (! $snapshot) {

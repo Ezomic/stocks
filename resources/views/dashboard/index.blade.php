@@ -14,6 +14,15 @@
     @endif
 </div>
 
+@if($inactiveAccountCount > 0)
+<div class="auth-banner">
+    &#9679; {{ $inactiveAccountCount }} {{ Str::plural('position', $inactiveAccountCount) }}
+    {{ $inactiveAccountCount === 1 ? 'belongs' : 'belong' }} to another broker account and
+    {{ $inactiveAccountCount === 1 ? 'is' : 'are' }} not being priced or traded.
+    Active account: {{ $activeAccountId ?: 'not configured' }} ({{ $activeMode }} mode).
+</div>
+@endif
+
 <div class="stats-row">
     <div class="stat">
         <div class="stat-label">Portfolio value</div>
