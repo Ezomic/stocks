@@ -4,6 +4,30 @@
 <h1>Settings</h1>
 
 <div class="card" style="max-width:600px">
+    <h2>Automated trading</h2>
+    <div style="display:flex;align-items:center;gap:16px">
+        <span class="badge {{ $tradingEnabled ? 'badge-green' : 'badge-red' }}">
+            {{ $tradingEnabled ? 'Running' : 'Paused' }}
+        </span>
+        <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
+            @if($tradingEnabled)
+                Rules are evaluated every minute and orders are placed automatically.
+            @else
+                No orders will be placed. Prices and order statuses keep syncing.
+            @endif
+        </p>
+        <form method="POST" action="{{ route('settings.trading') }}" style="margin:0">
+            @csrf
+            <input type="hidden" name="trading_enabled" value="{{ $tradingEnabled ? '0' : '1' }}">
+            <button type="submit" class="btn {{ $tradingEnabled ? 'btn-danger' : 'btn-primary' }}"
+                    @if($tradingEnabled) onclick="return confirm('Pause automated trading? No orders will be placed until you resume.')" @endif>
+                {{ $tradingEnabled ? 'Pause trading' : 'Resume trading' }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="max-width:600px">
     <h2>IBKR connection</h2>
     <table style="margin-bottom:0">
         <tr><td style="color:var(--muted);width:160px">Mode</td><td><span class="badge {{ $mode === 'paper' ? 'badge-orange' : 'badge-red' }}">{{ strtoupper($mode) }}</span></td></tr>
