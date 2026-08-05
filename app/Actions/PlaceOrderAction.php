@@ -8,7 +8,10 @@ use App\Models\Order;
 use App\Models\Position;
 use App\Models\Rule;
 use App\Services\IbkrClient;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class PlaceOrderAction
 {
@@ -35,30 +38,80 @@ class PlaceOrderAction
             ];
 
             $response = $this->client->placeOrder($payload);
+            $this->guardSuccessful($response);
             $first = $this->firstRow($response->json());
 
             // IBKR may return a confirmation challenge
             if (isset($first['messageIds'])) {
-                $replyId = $first['id'] ?? '';
-                $response = $this->client->confirmOrder(is_scalar($replyId) ? (string) $replyId : '');
+                $response = $this->client->confirmOrder($this->replyId($first));
+                $this->guardSuccessful($response);
                 $first = $this->firstRow($response->json());
             }
 
-            $brokerOrderId = $first['order_id'] ?? $first['orderId'] ?? null;
-
             $order->update([
                 'status' => 'placed',
-                'broker_order_id' => is_scalar($brokerOrderId) ? (string) $brokerOrderId : '',
+                'broker_order_id' => $this->brokerOrderId($first, $response),
                 'placed_at' => Carbon::now(),
             ]);
         } catch (\Throwable $e) {
             $order->update([
                 'status' => 'failed',
-                'error_message' => $e->getMessage(),
+                'error_message' => Str::limit($e->getMessage(), 2000),
             ]);
         }
 
         return $order->refresh();
+    }
+
+    /**
+     * The Http client does not throw on its own, so an expired session or a gateway error
+     * would otherwise fall through and be recorded as a successfully placed order.
+     */
+    private function guardSuccessful(Response $response): void
+    {
+        if ($response->successful()) {
+            return;
+        }
+
+        throw new RuntimeException(
+            "IBKR returned HTTP {$response->status()}: ".Str::limit($response->body(), 1000)
+        );
+    }
+
+    /** @param array<int|string, mixed> $first */
+    private function replyId(array $first): string
+    {
+        $replyId = $first['id'] ?? '';
+        $replyId = is_scalar($replyId) ? (string) $replyId : '';
+
+        if ($replyId === '') {
+            throw new RuntimeException('IBKR returned a confirmation challenge without a reply id.');
+        }
+
+        return $replyId;
+    }
+
+    /**
+     * Without a broker order id the order can never be reconciled by SyncOrderStatusAction,
+     * so it must not be recorded as placed. The broker may still have accepted it, which is
+     * why the message says so rather than claiming the order was rejected.
+     *
+     * @param  array<int|string, mixed>  $first
+     */
+    private function brokerOrderId(array $first, Response $response): string
+    {
+        $brokerOrderId = $first['order_id'] ?? $first['orderId'] ?? '';
+        $brokerOrderId = is_scalar($brokerOrderId) ? (string) $brokerOrderId : '';
+
+        if ($brokerOrderId === '') {
+            throw new RuntimeException(
+                'IBKR accepted the request but returned no order id, so the order cannot be '
+                .'tracked and may or may not be live at the broker. Response: '
+                .Str::limit($response->body(), 1000)
+            );
+        }
+
+        return $brokerOrderId;
     }
 
     /**
