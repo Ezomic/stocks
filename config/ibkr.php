@@ -19,6 +19,13 @@ return [
     'max_price_age_minutes' => (int) env('IBKR_MAX_PRICE_AGE_MINUTES', 5),
 
     /*
+     * How long price snapshots are kept. One row per position per minute adds up to roughly
+     * half a million rows per position per year in a single SQLite file, and nothing reads
+     * further back than the position chart. Set to 0 to keep everything.
+     */
+    'snapshot_retention_days' => (int) env('STOCKS_SNAPSHOT_RETENTION_DAYS', 30),
+
+    /*
      * The gateway runs on localhost, so anything slow is wedged rather than far away. Short
      * limits keep a stalled gateway from holding a page render or a scheduled run open.
      */
