@@ -2,16 +2,21 @@
 
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RuleController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
+
+    Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
+    Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store']);
 });
 
 Route::middleware('auth')->group(function () {
@@ -32,6 +37,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/sync-prices', [SettingsController::class, 'syncPrices'])->name('settings.sync-prices');
     Route::post('/settings/evaluate-rules', [SettingsController::class, 'evaluateRules'])->name('settings.evaluate-rules');
     Route::post('/settings/sync-orders', [SettingsController::class, 'syncOrders'])->name('settings.sync-orders');
+    Route::post('/settings/two-factor', [TwoFactorController::class, 'store'])->name('two-factor.store');
+    Route::post('/settings/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('two-factor.confirm');
+    Route::post('/settings/two-factor/recovery-codes', [TwoFactorController::class, 'recoveryCodes'])->name('two-factor.recovery-codes');
+    Route::delete('/settings/two-factor', [TwoFactorController::class, 'destroy'])->name('two-factor.destroy');
     Route::post('/settings/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
     Route::delete('/settings/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
 
