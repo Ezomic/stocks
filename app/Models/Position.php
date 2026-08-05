@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string $market
  * @property string|null $ibkr_con_id
  * @property string|null $notes
+ * @property Carbon|null $last_triggered_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property float|null $current_price
@@ -42,6 +43,7 @@ use Illuminate\Support\Carbon;
     'market',
     'ibkr_con_id',
     'notes',
+    'last_triggered_at',
 ])]
 class Position extends Model
 {
@@ -53,6 +55,7 @@ class Position extends Model
         return [
             'quantity' => 'decimal:6',
             'avg_buy_price' => 'decimal:4',
+            'last_triggered_at' => 'datetime',
         ];
     }
 

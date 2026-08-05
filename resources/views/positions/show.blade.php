@@ -65,8 +65,8 @@
         <div><span style="color:var(--muted);font-size:12px">Status</span><br>
             <span class="badge {{ $position->rule->is_active ? 'badge-green' : '' }}">{{ $position->rule->is_active ? 'Active' : 'Paused' }}</span>
         </div>
-        @if($position->rule->last_triggered_at)
-        <div><span style="color:var(--muted);font-size:12px">Last triggered</span><br>{{ $position->rule->last_triggered_at->diffForHumans() }}</div>
+        @if($position->last_triggered_at)
+        <div><span style="color:var(--muted);font-size:12px">Last triggered</span><br>{{ $position->last_triggered_at->diffForHumans() }}</div>
         @endif
         <div style="margin-left:auto">
             <a href="/rules/{{ $position->rule->id }}/edit" class="btn btn-sm">Edit rule</a>

@@ -18,7 +18,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $stop_loss_pct
  * @property bool $is_active
  * @property int $cooldown_minutes
- * @property Carbon|null $last_triggered_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -28,7 +27,6 @@ use Illuminate\Support\Carbon;
     'stop_loss_pct',
     'is_active',
     'cooldown_minutes',
-    'last_triggered_at',
 ])]
 class Rule extends Model
 {
@@ -41,7 +39,6 @@ class Rule extends Model
             'take_profit_pct' => 'decimal:2',
             'stop_loss_pct' => 'decimal:2',
             'is_active' => 'boolean',
-            'last_triggered_at' => 'datetime',
         ];
     }
 
@@ -51,13 +48,18 @@ class Rule extends Model
         return $this->belongsTo(Position::class);
     }
 
-    public function isInCooldown(): bool
+    /**
+     * Cooldown is tracked on the position, not on the rule. A global rule is shared by every
+     * position, so a rule-level timestamp let the first position to trigger silence the
+     * take-profit and stop-loss of every other position for the whole cooldown window.
+     */
+    public function isInCooldown(Position $position): bool
     {
-        if ($this->last_triggered_at === null) {
+        if ($position->last_triggered_at === null) {
             return false;
         }
 
-        return $this->last_triggered_at->addMinutes($this->cooldown_minutes)->isFuture();
+        return $position->last_triggered_at->addMinutes($this->cooldown_minutes)->isFuture();
     }
 
     public function isGlobal(): bool

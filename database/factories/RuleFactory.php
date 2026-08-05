@@ -23,7 +23,6 @@ class RuleFactory extends Factory
             'stop_loss_pct' => fake()->randomFloat(2, 5, 20),
             'is_active' => true,
             'cooldown_minutes' => 60,
-            'last_triggered_at' => null,
         ];
     }
 }
