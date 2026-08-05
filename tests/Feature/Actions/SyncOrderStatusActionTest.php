@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\PriceSnapshot;
 use App\Models\Rule;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\IbkrFakeResponses;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
@@ -19,13 +20,10 @@ beforeEach(function (): void {
 function brokerOrders(array $overrides = []): void
 {
     Http::fake([
-        '*' => Http::response([
-            'orders' => [array_merge([
-                'orderId' => 'ORD-001',
-                'status' => 'Filled',
-                'avgPrice' => '115.00',
-            ], $overrides)],
-        ], 200),
+        '*' => Http::response(array_replace_recursive(
+            IbkrFakeResponses::orderStatus(),
+            ['orders' => [$overrides]],
+        ), 200),
     ]);
 }
 

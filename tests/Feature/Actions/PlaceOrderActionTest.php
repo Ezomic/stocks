@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\PlaceOrderAction;
 use App\Models\Position;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\IbkrFakeResponses;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
@@ -18,7 +19,7 @@ beforeEach(function (): void {
 });
 
 it('records a placed order when IBKR returns an order id', function (): void {
-    Http::fake(['*' => Http::response([['order_id' => 'ORD-001']], 200)]);
+    Http::fake(['*' => Http::response(IbkrFakeResponses::orderPlaced('ORD-001'), 200)]);
 
     $order = app(PlaceOrderAction::class)->handle($this->position, 'sell');
 
@@ -30,8 +31,8 @@ it('records a placed order when IBKR returns an order id', function (): void {
 
 it('answers the confirmation challenge and records the resulting order id', function (): void {
     Http::fake([
-        '*/iserver/account/*/orders' => Http::response([['id' => 'REPLY-1', 'messageIds' => ['o163']]], 200),
-        '*/iserver/reply/*' => Http::response([['order_id' => 'ORD-002']], 200),
+        '*/iserver/account/*/orders' => Http::response(IbkrFakeResponses::orderConfirmationChallenge('REPLY-1'), 200),
+        '*/iserver/reply/*' => Http::response(IbkrFakeResponses::orderPlaced('ORD-002'), 200),
     ]);
 
     $order = app(PlaceOrderAction::class)->handle($this->position, 'sell');
@@ -43,7 +44,7 @@ it('answers the confirmation challenge and records the resulting order id', func
 });
 
 it('fails the order when the gateway session has expired', function (): void {
-    Http::fake(['*' => Http::response(['error' => 'not authenticated'], 401)]);
+    Http::fake(['*' => Http::response(IbkrFakeResponses::authFailure(), 401)]);
 
     $order = app(PlaceOrderAction::class)->handle($this->position, 'sell');
 
@@ -83,7 +84,7 @@ it('fails the order when the confirmation challenge carries no reply id', functi
 
 it('fails the order when the confirmation reply itself is rejected', function (): void {
     Http::fake([
-        '*/iserver/account/*/orders' => Http::response([['id' => 'REPLY-2', 'messageIds' => ['o163']]], 200),
+        '*/iserver/account/*/orders' => Http::response(IbkrFakeResponses::orderConfirmationChallenge('REPLY-2'), 200),
         '*/iserver/reply/*' => Http::response(['error' => 'rejected'], 400),
     ]);
 
