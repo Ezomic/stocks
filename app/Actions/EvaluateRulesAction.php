@@ -49,23 +49,21 @@ class EvaluateRulesAction
                 $rule = Rule::where('position_id', $position->id)->where('is_active', true)->first()
                     ?? $globalRule;
 
-                if (! $rule) {
+                if (! $rule || $rule->isInCooldown($position)) {
                     return;
                 }
 
                 $gainPct = $position->gainPct((float) $snapshot->price);
 
-                if ($rule->take_profit_pct !== null && $gainPct >= (float) $rule->take_profit_pct) {
-                    if (! $rule->isInCooldown()) {
-                        $this->placeOrder->handle($position, 'sell', $rule);
-                        $rule->update(['last_triggered_at' => Carbon::now()]);
-                    }
-                } elseif ($rule->stop_loss_pct !== null && $gainPct <= -(float) $rule->stop_loss_pct) {
-                    if (! $rule->isInCooldown()) {
-                        $this->placeOrder->handle($position, 'sell', $rule);
-                        $rule->update(['last_triggered_at' => Carbon::now()]);
-                    }
+                $triggered = ($rule->take_profit_pct !== null && $gainPct >= (float) $rule->take_profit_pct)
+                    || ($rule->stop_loss_pct !== null && $gainPct <= -(float) $rule->stop_loss_pct);
+
+                if (! $triggered) {
+                    return;
                 }
+
+                $this->placeOrder->handle($position, 'sell', $rule);
+                $position->update(['last_triggered_at' => Carbon::now()]);
             });
     }
 }

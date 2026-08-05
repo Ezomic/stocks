@@ -40,7 +40,7 @@
             <td>{{ $r->stop_loss_pct !== null ? $r->stop_loss_pct.'%' : '—' }}</td>
             <td>{{ $r->cooldown_minutes }}min</td>
             <td><span class="badge {{ $r->is_active ? 'badge-green' : '' }}">{{ $r->is_active ? 'Active' : 'Paused' }}</span></td>
-            <td style="color:var(--muted)">{{ $r->last_triggered_at?->diffForHumans() ?? '—' }}</td>
+            <td style="color:var(--muted)">{{ $r->position->last_triggered_at?->diffForHumans() ?? '—' }}</td>
             <td style="display:flex;gap:6px">
                 <a href="/rules/{{ $r->id }}/edit" class="btn btn-sm">Edit</a>
                 <form method="POST" action="/rules/{{ $r->id }}" style="margin:0">

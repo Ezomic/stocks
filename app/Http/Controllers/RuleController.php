@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreRuleRequest;
+use App\Http\Requests\UpdateRuleRequest;
 use App\Models\Position;
 use App\Models\Rule;
 use Illuminate\Http\RedirectResponse;
@@ -28,16 +30,8 @@ class RuleController extends Controller
         return view('rules.create', compact('positions'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreRuleRequest $request): RedirectResponse
     {
-        $request->validate([
-            'position_id' => ['nullable', 'exists:positions,id'],
-            'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
-            'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
-            'is_active' => ['boolean'],
-            'cooldown_minutes' => ['required', 'integer', 'min:1'],
-        ]);
-
         Rule::create($this->ruleAttributes($request));
 
         return redirect('/rules')->with('success', 'Rule saved.');
@@ -50,16 +44,8 @@ class RuleController extends Controller
         return view('rules.edit', compact('rule', 'positions'));
     }
 
-    public function update(Request $request, Rule $rule): RedirectResponse
+    public function update(UpdateRuleRequest $request, Rule $rule): RedirectResponse
     {
-        $request->validate([
-            'position_id' => ['nullable', 'exists:positions,id'],
-            'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
-            'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
-            'is_active' => ['boolean'],
-            'cooldown_minutes' => ['required', 'integer', 'min:1'],
-        ]);
-
         $rule->update($this->ruleAttributes($request));
 
         return redirect('/rules')->with('success', 'Rule updated.');

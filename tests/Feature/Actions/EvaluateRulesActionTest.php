@@ -113,12 +113,13 @@ it('does not place an order when price is within thresholds', function (): void 
     expect(Order::count())->toBe(0);
 });
 
-it('skips rule evaluation when rule is in cooldown', function (): void {
+it('skips rule evaluation when the position is in cooldown', function (): void {
     $position = Position::factory()->create([
         'symbol' => 'NVDA',
         'avg_buy_price' => '100.00',
         'quantity' => '2',
         'ibkr_con_id' => '4815747',
+        'last_triggered_at' => CarbonImmutable::now()->subMinutes(30),
     ]);
 
     Rule::factory()->create([
@@ -127,7 +128,6 @@ it('skips rule evaluation when rule is in cooldown', function (): void {
         'stop_loss_pct' => '5.00',
         'is_active' => true,
         'cooldown_minutes' => 60,
-        'last_triggered_at' => CarbonImmutable::now()->subMinutes(30),
     ]);
 
     PriceSnapshot::create([
