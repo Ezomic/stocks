@@ -53,4 +53,11 @@ class PriceSnapshot extends Model
 
         return is_numeric($minutes) ? (int) $minutes : 5;
     }
+
+    public static function retentionDays(): int
+    {
+        $days = config('ibkr.snapshot_retention_days');
+
+        return is_numeric($days) ? (int) $days : 30;
+    }
 }

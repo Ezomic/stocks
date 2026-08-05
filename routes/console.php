@@ -10,3 +10,5 @@ Schedule::command('ibkr:tickle')->everyFifteenMinutes();
 // Notifications are queued so a slow mail server cannot stall a scheduled run. There is no
 // long-running worker here, only cron, so the queue is drained on the same tick.
 Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
+
+Schedule::command('prices:prune')->dailyAt('02:15');
