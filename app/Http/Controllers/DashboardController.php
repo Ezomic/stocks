@@ -54,6 +54,7 @@ class DashboardController extends Controller
             'inactiveAccountCount' => Position::count() - count($tradedIds),
             'stalePriceCount' => $stalePriceCount,
             'tradingEnabled' => Setting::tradingEnabled(),
+            'dryRun' => Setting::dryRun(),
             'maxPriceAgeMinutes' => PriceSnapshot::maxAgeMinutes(),
             'activeMode' => Position::activeMode(),
             'activeAccountId' => Position::activeAccountId(),

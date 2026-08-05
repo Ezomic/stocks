@@ -28,6 +28,28 @@
 </div>
 
 <div class="card" style="max-width:600px">
+    <h2>Dry run</h2>
+    <div style="display:flex;align-items:center;gap:16px">
+        <span class="badge {{ $dryRun ? 'badge-orange' : '' }}">{{ $dryRun ? 'On' : 'Off' }}</span>
+        <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
+            @if($dryRun)
+                Triggered rules record a simulated order instead of sending anything to IBKR.
+            @else
+                Triggered rules place real orders through IBKR.
+            @endif
+        </p>
+        <form method="POST" action="{{ route('settings.dry-run') }}" style="margin:0">
+            @csrf
+            <input type="hidden" name="dry_run" value="{{ $dryRun ? '0' : '1' }}">
+            <button type="submit" class="btn {{ $dryRun ? 'btn-primary' : '' }}"
+                    @unless($dryRun) onclick="return confirm('Turn on dry run? No further orders will reach IBKR until you turn it off.')" @endunless>
+                {{ $dryRun ? 'Turn off dry run' : 'Turn on dry run' }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="max-width:600px">
     <h2>IBKR connection</h2>
     <table style="margin-bottom:0">
         <tr><td style="color:var(--muted);width:160px">Mode</td><td><span class="badge {{ $mode === 'paper' ? 'badge-orange' : 'badge-red' }}">{{ strtoupper($mode) }}</span></td></tr>

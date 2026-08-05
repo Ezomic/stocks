@@ -38,8 +38,15 @@ class EvaluateRulesAction
         $globalRule = Rule::whereNull('position_id')->where('is_active', true)->first();
 
         // An order that is placed but not yet reconciled has not reduced the position quantity
-        // yet, so evaluating against it would sell the same holding twice.
-        $positionsWithOpenOrders = Order::whereIn('status', ['pending', 'placed'])
+        // yet, so evaluating against it would sell the same holding twice. During a dry run a
+        // simulated order stands in for the sale that would have closed the position, which
+        // keeps the simulation honest about how often a rule really fires. Outside a dry run
+        // those same records are only history and must not block anything.
+        $blockingStatuses = Setting::dryRun()
+            ? ['pending', 'placed', 'simulated']
+            : ['pending', 'placed'];
+
+        $positionsWithOpenOrders = Order::whereIn('status', $blockingStatuses)
             ->pluck('position_id')
             ->all();
 

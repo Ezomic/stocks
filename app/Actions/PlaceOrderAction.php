@@ -7,6 +7,7 @@ namespace App\Actions;
 use App\Models\Order;
 use App\Models\Position;
 use App\Models\Rule;
+use App\Models\Setting;
 use App\Services\IbkrClient;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -25,8 +26,14 @@ class PlaceOrderAction
             'side' => $side,
             'quantity' => $position->quantity,
             'order_type' => 'market',
-            'status' => 'pending',
+            'status' => Setting::dryRun() ? 'simulated' : 'pending',
         ]);
+
+        // The record of what would have been sent is the whole point of a dry run, so it is
+        // written first and the gateway is simply never called.
+        if ($order->status === 'simulated') {
+            return $order;
+        }
 
         try {
             $payload = [

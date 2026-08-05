@@ -21,8 +21,8 @@
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>{{ strtoupper($o->order_type) }}</td>
             <td>
-                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue', default=>'' } @endphp
-                <span class="badge {{ $cls }}">{{ $o->status }}</span>
+                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange', default=>'' } @endphp
+                <span class="badge {{ $cls }}">{{ $o->status === 'simulated' ? 'simulated (dry run)' : $o->status }}</span>
             </td>
             <td style="color:var(--muted);font-size:12px">{{ $o->broker_order_id ?? '—' }}</td>
             <td style="color:var(--muted)">{{ $o->placed_at?->format('d M H:i') ?? '—' }}</td>

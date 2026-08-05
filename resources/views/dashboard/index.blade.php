@@ -2,6 +2,13 @@
 @section('title', 'Dashboard')
 @section('content')
 
+@if($dryRun)
+<div class="auth-banner">
+    &#9679; <strong>Dry run is on.</strong> Triggered rules are recorded as simulated orders and nothing reaches IBKR.
+    <a href="/settings" class="btn btn-sm">Settings</a>
+</div>
+@endif
+
 @unless($tradingEnabled)
 <div class="auth-banner">
     &#9679; <strong>Automated trading is paused.</strong> No orders will be placed.
@@ -115,8 +122,8 @@
             <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>
-                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue', default=>'' } @endphp
-                <span class="badge {{ $cls }}">{{ $o->status }}</span>
+                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange', default=>'' } @endphp
+                <span class="badge {{ $cls }}">{{ $o->status === 'simulated' ? 'simulated (dry run)' : $o->status }}</span>
             </td>
             <td style="color:var(--muted)">{{ $o->created_at->diffForHumans() }}</td>
         </tr>
