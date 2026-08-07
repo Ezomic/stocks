@@ -69,6 +69,7 @@ class SyncOrderStatusAction
                 $this->notifier->notify($order->refresh(), 'filled');
             } elseif (in_array($status, ['cancelled', 'inactive'])) {
                 $order->update(['status' => 'cancelled']);
+                $this->notifier->notify($order->refresh(), 'cancelled');
             }
         }
 

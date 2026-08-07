@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $broker_order_id
  * @property Carbon|null $placed_at
  * @property Carbon|null $filled_at
+ * @property Carbon|null $cancel_requested_at
  * @property string|null $fill_price
  * @property string|null $error_message
  * @property Carbon $created_at
@@ -39,6 +40,7 @@ use Illuminate\Support\Carbon;
     'broker_order_id',
     'placed_at',
     'filled_at',
+    'cancel_requested_at',
     'fill_price',
     'error_message',
 ])]
@@ -55,6 +57,7 @@ class Order extends Model
             'fill_price' => 'decimal:4',
             'placed_at' => 'datetime',
             'filled_at' => 'datetime',
+            'cancel_requested_at' => 'datetime',
         ];
     }
 
