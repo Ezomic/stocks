@@ -26,6 +26,7 @@ class PlaceOrderAction
     {
         $order = Order::create([
             'position_id' => $position->id,
+            'symbol' => $position->symbol,
             'rule_id' => $rule?->id,
             'side' => $side,
             'quantity' => $position->quantity,

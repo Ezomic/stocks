@@ -120,7 +120,7 @@
         <tbody>
         @foreach($recentOrders as $o)
         <tr>
-            <td>{{ $o->position->symbol }}</td>
+            <td>{{ $o->symbol ?? '—' }}</td>
             <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>

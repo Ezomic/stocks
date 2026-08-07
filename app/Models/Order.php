@@ -13,7 +13,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $position_id
+ * @property int|null $position_id
+ * @property string|null $symbol
  * @property int|null $rule_id
  * @property string $side
  * @property string $quantity
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'position_id',
+    'symbol',
     'rule_id',
     'side',
     'quantity',

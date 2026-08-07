@@ -16,7 +16,14 @@
         <tbody>
         @foreach($orders as $o)
         <tr>
-            <td><a href="/positions/{{ $o->position_id }}">{{ $o->position->symbol }}</a></td>
+            <td>
+                @if($o->position)
+                    <a href="/positions/{{ $o->position_id }}">{{ $o->symbol }}</a>
+                @else
+                    {{ $o->symbol ?? '—' }}
+                    <span class="badge" title="The position this order belonged to has been deleted">deleted</span>
+                @endif
+            </td>
             <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>{{ strtoupper($o->order_type) }}</td>
@@ -30,7 +37,7 @@
             <td style="color:var(--muted);font-size:12px">{{ $o->broker_order_id ?? '—' }}</td>
             <td style="color:var(--muted)">{{ $o->placed_at?->format('d M H:i') ?? '—' }}</td>
             <td style="color:var(--muted)">{{ $o->filled_at?->format('d M H:i') ?? '—' }}</td>
-            <td>{{ $o->fill_price ? $o->position->currency.' '.number_format((float)$o->fill_price, 2) : '—' }}</td>
+            <td>{{ $o->fill_price ? trim(($o->position->currency ?? '').' '.number_format((float)$o->fill_price, 2)) : '—' }}</td>
             <td>
                 @if($o->status === 'placed' && $o->broker_order_id && ! $o->cancel_requested_at)
                 <form method="POST" action="{{ route('orders.cancel', $o) }}" style="margin:0"
