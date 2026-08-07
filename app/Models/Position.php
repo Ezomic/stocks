@@ -20,12 +20,14 @@ use Illuminate\Support\Carbon;
  * @property string $broker_account_id
  * @property string $account_mode
  * @property string $quantity
+ * @property string|null $broker_quantity
  * @property string $avg_buy_price
  * @property string $currency
  * @property string $market
  * @property string|null $ibkr_con_id
  * @property string|null $notes
  * @property Carbon|null $last_triggered_at
+ * @property Carbon|null $reconciled_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property float|null $current_price
@@ -44,6 +46,8 @@ use Illuminate\Support\Carbon;
     'ibkr_con_id',
     'notes',
     'last_triggered_at',
+    'broker_quantity',
+    'reconciled_at',
 ])]
 class Position extends Model
 {
@@ -55,7 +59,9 @@ class Position extends Model
         return [
             'quantity' => 'decimal:6',
             'avg_buy_price' => 'decimal:4',
+            'broker_quantity' => 'decimal:6',
             'last_triggered_at' => 'datetime',
+            'reconciled_at' => 'datetime',
         ];
     }
 
@@ -117,6 +123,16 @@ class Position extends Model
         $rule = $this->rule ?? $globalRule;
 
         return $rule !== null && $rule->is_active ? $rule : null;
+    }
+
+    /**
+     * The broker is the authority on what is actually held. Drift means every rule for this
+     * position is being measured against a number that is not real.
+     */
+    public function hasDrift(): bool
+    {
+        return $this->broker_quantity !== null
+            && abs((float) $this->broker_quantity - (float) $this->quantity) > 0.000001;
     }
 
     public function gainPct(float $currentPrice): float

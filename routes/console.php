@@ -12,3 +12,4 @@ Schedule::command('ibkr:tickle')->everyFifteenMinutes();
 Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
 
 Schedule::command('prices:prune')->dailyAt('02:15');
+Schedule::command('ibkr:reconcile-positions')->dailyAt('02:30');
