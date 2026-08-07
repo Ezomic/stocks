@@ -35,5 +35,8 @@
         <env name="IBKR_MODE" value="paper"/>
         <env name="IBKR_PAPER_ACCOUNT_ID" value="DU0000001"/>
         <env name="IBKR_LIVE_ACCOUNT_ID" value="U0000001"/>
+        <env name="STOCKS_NOTIFICATIONS_ENABLED" value="true"/>
+        <env name="STOCKS_NOTIFICATION_CHANNELS" value="mail"/>
+        <env name="STOCKS_NOTIFICATION_EVENTS" value="placed,filled,failed,cancelled,unreconciled"/>
     </php>
 </phpunit>
