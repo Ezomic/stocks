@@ -35,7 +35,7 @@ class EvaluateRulesAction
             return;
         }
 
-        $globalRule = Rule::whereNull('position_id')->where('is_active', true)->first();
+        $globalRule = Rule::whereNull('position_id')->first();
 
         // An order that is placed but not yet reconciled has not reduced the position quantity
         // yet, so evaluating against it would sell the same holding twice. During a dry run a
@@ -51,6 +51,7 @@ class EvaluateRulesAction
             ->all();
 
         Position::forActiveAccount()
+            ->with('rule')
             ->where('quantity', '>', 0)
             ->whereNotIn('id', $positionsWithOpenOrders)
             ->get()
@@ -61,8 +62,7 @@ class EvaluateRulesAction
                     return;
                 }
 
-                $rule = Rule::where('position_id', $position->id)->where('is_active', true)->first()
-                    ?? $globalRule;
+                $rule = $position->activeRule($globalRule);
 
                 if (! $rule || $rule->isInCooldown($position)) {
                     return;

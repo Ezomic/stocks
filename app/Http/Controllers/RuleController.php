@@ -20,7 +20,16 @@ class RuleController extends Controller
         $globalRule = $rules->firstWhere('position_id', null);
         $positionRules = $rules->whereNotNull('position_id')->values();
 
-        return view('rules.index', compact('globalRule', 'positionRules'));
+        $positions = Position::with('rule')->orderBy('symbol')->get();
+
+        return view('rules.index', [
+            'globalRule' => $globalRule,
+            'positionRules' => $positionRules,
+            'positions' => $positions,
+            'governedByGlobal' => $positions->filter(
+                fn (Position $position): bool => $position->rule === null
+            )->values(),
+        ]);
     }
 
     public function create(): View

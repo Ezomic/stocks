@@ -6,9 +6,33 @@
     <a href="/rules/create" class="btn btn-primary">+ Add rule</a>
 </div>
 
+<div class="card" style="padding:0">
+    <table>
+        <thead><tr><th>Position</th><th>Evaluated under</th></tr></thead>
+        <tbody>
+        @forelse($positions as $position)
+        <tr>
+            <td><a href="/positions/{{ $position->id }}"><strong>{{ $position->symbol }}</strong></a></td>
+            <td>@include('partials.rule-badge', ['position' => $position, 'globalRule' => $globalRule])</td>
+        </tr>
+        @empty
+        <tr><td colspan="2" style="color:var(--muted)">No positions yet.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+
 @if($globalRule)
 <h2>Global default</h2>
 <div class="card">
+    <p style="font-size:13px;color:var(--muted);margin-top:0">
+        @if($governedByGlobal->isEmpty())
+            No position is evaluated under this rule. Every position has one of its own.
+        @else
+            Evaluates {{ $governedByGlobal->count() }} {{ Str::plural('position', $governedByGlobal->count()) }}
+            with no rule of their own: {{ $governedByGlobal->pluck('symbol')->join(', ') }}.
+        @endif
+    </p>
     <div style="display:flex;gap:24px;align-items:center">
         <div><span style="color:var(--muted);font-size:12px">Take profit</span><br><strong>{{ $globalRule->take_profit_pct ?? '—' }}%</strong></div>
         <div><span style="color:var(--muted);font-size:12px">Stop loss</span><br><strong>{{ $globalRule->stop_loss_pct ?? '—' }}%</strong></div>
