@@ -47,6 +47,24 @@
             </button>
         </form>
     </div>
+
+    @if($simulatedOrderCount > 0)
+    <div style="display:flex;align-items:center;gap:16px;border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+        <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
+            {{ $simulatedOrderCount }} simulated {{ Str::plural('order', $simulatedOrderCount) }} recorded.
+            @if($dryRun)
+                Each one stops its position triggering again, so clear them to re-run the simulation after changing thresholds.
+            @else
+                They are history now and do not affect real trading.
+            @endif
+        </p>
+        <form method="POST" action="{{ route('settings.dry-run.clear') }}" style="margin:0"
+              onsubmit="return confirm('Delete {{ $simulatedOrderCount }} simulated {{ Str::plural('order', $simulatedOrderCount) }}? Real orders are not touched.')">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-danger">Clear simulated orders</button>
+        </form>
+    </div>
+    @endif
 </div>
 
 <div class="card" style="max-width:600px">
