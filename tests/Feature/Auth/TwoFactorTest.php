@@ -175,7 +175,7 @@ it('regenerates recovery codes', function (): void {
     $user = userWithTwoFactor();
     $original = $user->two_factor_recovery_codes;
 
-    $this->actingAs($user)->post('/settings/two-factor/recovery-codes')
+    $this->actingAs($user)->post('/settings/two-factor/recovery-codes', ['password' => 'correct-horse'])
         ->assertRedirect(route('settings'));
 
     expect($user->fresh()->two_factor_recovery_codes)->toHaveCount(8)
@@ -185,7 +185,8 @@ it('regenerates recovery codes', function (): void {
 it('turns two-factor off again', function (): void {
     $user = userWithTwoFactor();
 
-    $this->actingAs($user)->delete('/settings/two-factor')->assertRedirect(route('settings'));
+    $this->actingAs($user)->delete('/settings/two-factor', ['password' => 'correct-horse'])
+        ->assertRedirect(route('settings'));
 
     $user->refresh();
 
@@ -198,6 +199,7 @@ it('keeps the two-factor endpoints behind authentication', function (): void {
     $this->post('/settings/two-factor')->assertRedirect('/login');
     $this->post('/settings/two-factor/confirm', ['code' => '123456'])->assertRedirect('/login');
     $this->post('/settings/two-factor/recovery-codes')->assertRedirect('/login');
+    $this->post('/settings/two-factor/show-recovery-codes')->assertRedirect('/login');
     $this->delete('/settings/two-factor')->assertRedirect('/login');
 });
 

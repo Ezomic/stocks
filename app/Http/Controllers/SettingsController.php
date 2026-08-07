@@ -28,7 +28,7 @@ class SettingsController extends Controller
             'twoFactorPending' => $user->two_factor_secret !== null && $user->two_factor_confirmed_at === null,
             'twoFactorSecret' => $user->two_factor_secret,
             'twoFactorQr' => $user->two_factor_secret === null ? '' : $twoFactor->qrCodeSvg($user),
-            'twoFactorRecoveryCodes' => $user->two_factor_recovery_codes ?? [],
+            'twoFactorRecoveryCodes' => $this->visibleRecoveryCodes($user),
             'mode' => config('ibkr.mode'),
             'paperGatewayUrl' => config('ibkr.paper.gateway_url'),
             'liveGatewayUrl' => config('ibkr.live.gateway_url'),
@@ -47,6 +47,25 @@ class SettingsController extends Controller
                 ])
                 ->all(),
         ]);
+    }
+
+    /**
+     * Recovery codes are second factors in their own right, so once two-factor is live they
+     * are only shown when they have just been generated or deliberately revealed. Before it is
+     * live the secret protects nothing yet, and losing the codes mid-setup is the worse
+     * outcome, so they stay on screen until enrolment is confirmed.
+     *
+     * @return array<int, string>
+     */
+    private function visibleRecoveryCodes(User $user): array
+    {
+        $flashed = session('recoveryCodes');
+
+        if (is_array($flashed)) {
+            return array_values(array_filter($flashed, 'is_string'));
+        }
+
+        return $user->hasTwoFactorEnabled() ? [] : ($user->two_factor_recovery_codes ?? []);
     }
 
     public function updateTrading(Request $request): RedirectResponse
