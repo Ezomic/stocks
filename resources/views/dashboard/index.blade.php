@@ -28,6 +28,16 @@
     @endif
 </div>
 
+@if($driftedPositions->isNotEmpty())
+<div class="auth-banner">
+    &#9679; <strong>{{ $driftedPositions->count() }} {{ Str::plural('position', $driftedPositions->count()) }} {{ $driftedPositions->count() === 1 ? 'does' : 'do' }} not match the broker.</strong>
+    @foreach($driftedPositions as $p)
+        {{ $p->symbol }} (here {{ rtrim(rtrim($p->quantity, '0'), '.') }}, IBKR {{ rtrim(rtrim($p->broker_quantity, '0'), '.') }}){{ ! $loop->last ? ',' : '' }}
+    @endforeach
+    Rules are measured against the local number.
+</div>
+@endif
+
 @if($unreconciledCount > 0)
 <div class="auth-banner">
     &#9679; <strong>{{ $unreconciledCount }} {{ Str::plural('order', $unreconciledCount) }} could not be reconciled.</strong>
@@ -98,7 +108,12 @@
         <tr>
             <td><a href="/positions/{{ $p->id }}"><strong>{{ $p->symbol }}</strong></a></td>
             <td><span class="badge">{{ $p->market }}</span></td>
-            <td>{{ rtrim(rtrim($p->quantity, '0'), '.') }}</td>
+            <td>
+                {{ rtrim(rtrim($p->quantity, '0'), '.') }}
+                @if($p->hasDrift())
+                    <span class="badge badge-orange" title="IBKR reports {{ rtrim(rtrim($p->broker_quantity, '0'), '.') }}">drift</span>
+                @endif
+            </td>
             <td>{{ $p->currency }} {{ number_format((float)$p->avg_buy_price, 2) }}</td>
             <td>
                 {{ $p->current_price !== null ? $p->currency.' '.number_format($p->current_price, 2) : '—' }}

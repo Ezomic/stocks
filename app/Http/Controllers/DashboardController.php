@@ -79,6 +79,7 @@ class DashboardController extends Controller
             'inactiveAccountCount' => Position::count() - count($tradedIds),
             'stalePriceCount' => $stalePriceCount,
             'unreconciledCount' => Order::where('status', 'unreconciled')->count(),
+            'driftedPositions' => $positions->filter(fn (Position $p): bool => $p->hasDrift())->values(),
             'globalRule' => Rule::whereNull('position_id')->first(),
             'tradingEnabled' => Setting::tradingEnabled(),
             'dryRun' => Setting::dryRun(),
