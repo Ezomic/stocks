@@ -105,6 +105,20 @@ class Position extends Model
         return $this->hasOne(PriceSnapshot::class, 'symbol', 'symbol')->latestOfMany('fetched_at');
     }
 
+    /**
+     * The rule this position is actually evaluated under, or null when nothing governs it.
+     *
+     * A rule attached to the position wins whether or not it is active: switching it off is a
+     * decision to stop trading this position, not a request to fall back on whatever the
+     * global default happens to say.
+     */
+    public function activeRule(?Rule $globalRule): ?Rule
+    {
+        $rule = $this->rule ?? $globalRule;
+
+        return $rule !== null && $rule->is_active ? $rule : null;
+    }
+
     public function gainPct(float $currentPrice): float
     {
         if ((float) $this->avg_buy_price === 0.0) {

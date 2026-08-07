@@ -103,13 +103,7 @@
                 @else —
                 @endif
             </td>
-            <td>
-                @if($p->rule)
-                    <span class="badge badge-blue">TP {{ $p->rule->take_profit_pct }}% / SL {{ $p->rule->stop_loss_pct }}%</span>
-                @else
-                    <span class="badge">No rule</span>
-                @endif
-            </td>
+            <td>@include('partials.rule-badge', ['position' => $p, 'globalRule' => $globalRule])</td>
             <td><a href="/positions/{{ $p->id }}" class="btn btn-sm">View</a></td>
         </tr>
         @endforeach
