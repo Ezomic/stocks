@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Services\IbkrClient;
 use App\Services\OrderNotifier;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class SyncOrderStatusAction
 {
@@ -43,10 +44,14 @@ class SyncOrderStatusAction
                 return is_scalar($key) ? (string) $key : '';
             });
 
+        $unreported = new Collection;
+
         foreach ($pending as $order) {
             $broker = $brokerOrders->get($order->broker_order_id);
 
             if (! $broker) {
+                $unreported->push($order);
+
                 continue;
             }
 
@@ -66,6 +71,101 @@ class SyncOrderStatusAction
                 $order->update(['status' => 'cancelled']);
             }
         }
+
+        $this->reconcileAbandoned($unreported->filter(fn (Order $order): bool => $this->isPastDeadline($order)));
+    }
+
+    /**
+     * An order the broker has stopped reporting never leaves `placed` on its own, and rule
+     * evaluation skips any position with an order still in flight. Left alone, one order
+     * ageing out of the broker's list disables that position permanently.
+     *
+     * @param  Collection<int, Order>  $orders
+     */
+    private function reconcileAbandoned(Collection $orders): void
+    {
+        if ($orders->isEmpty()) {
+            return;
+        }
+
+        $brokerQuantities = $this->brokerQuantitiesByConid();
+
+        // Without the broker's own figures there is nothing to reconcile against, and guessing
+        // is what this whole change exists to avoid. Try again on the next cycle.
+        if ($brokerQuantities === null) {
+            return;
+        }
+
+        foreach ($orders as $order) {
+            $order->update([
+                'status' => 'unreconciled',
+                'error_message' => $this->reconcile($order, $brokerQuantities),
+            ]);
+
+            $this->notifier->notify($order->refresh(), 'unreconciled');
+        }
+    }
+
+    /**
+     * @param  Collection<string, float>  $brokerQuantities
+     */
+    private function reconcile(Order $order, Collection $brokerQuantities): string
+    {
+        $note = 'The broker stopped reporting this order before it was reconciled.';
+        $position = $order->position;
+        $conid = $position instanceof Position ? (string) $position->ibkr_con_id : '';
+
+        if (! $position instanceof Position || ! $brokerQuantities->has($conid)) {
+            return $note.' The broker reported no position for this contract either, so the'
+                .' quantity could not be confirmed. Check the account before trading it again.';
+        }
+
+        $brokerQuantity = (float) $brokerQuantities->get($conid);
+        $localQuantity = (float) $position->quantity;
+
+        if (abs($brokerQuantity - $localQuantity) < 0.000001) {
+            return $note.' The broker position matches the local quantity, so it most likely never filled.';
+        }
+
+        $position->update(['quantity' => $brokerQuantity]);
+
+        return $note." Position quantity corrected from {$localQuantity} to {$brokerQuantity} from the broker's own figure.";
+    }
+
+    /**
+     * @return Collection<string, float>|null
+     */
+    private function brokerQuantitiesByConid(): ?Collection
+    {
+        $response = $this->client->portfolioPositions();
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $rows = $response->json();
+
+        if (! is_array($rows)) {
+            return null;
+        }
+
+        return collect($rows)
+            ->filter(fn (mixed $row): bool => is_array($row) && isset($row['conid']))
+            ->mapWithKeys(function (array $row): array {
+                $conid = $row['conid'];
+                $quantity = $row['position'] ?? 0;
+
+                return [
+                    (is_scalar($conid) ? (string) $conid : '') => is_numeric($quantity) ? (float) $quantity : 0.0,
+                ];
+            });
+    }
+
+    private function isPastDeadline(Order $order): bool
+    {
+        $placedAt = $order->placed_at ?? $order->created_at;
+
+        return $placedAt->addMinutes(Order::reconcileTimeoutMinutes())->isPast();
     }
 
     /**
