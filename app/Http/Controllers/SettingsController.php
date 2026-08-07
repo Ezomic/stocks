@@ -7,12 +7,14 @@ namespace App\Http\Controllers;
 use App\Actions\EvaluateRulesAction;
 use App\Actions\SyncOrderStatusAction;
 use App\Actions\SyncPricesAction;
+use App\Models\Order;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\IbkrAuthService;
 use App\Services\TwoFactorAuthenticator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -36,6 +38,7 @@ class SettingsController extends Controller
             'liveAccountId' => config('ibkr.live.account_id'),
             'tradingEnabled' => Setting::tradingEnabled(),
             'dryRun' => Setting::dryRun(),
+            'simulatedOrderCount' => Order::where('status', 'simulated')->count(),
             'tokens' => $user->tokens()
                 ->latest()
                 ->get()
@@ -88,6 +91,22 @@ class SettingsController extends Controller
         return back()->with('success', $dryRun
             ? 'Dry run enabled. Rules will record what they would have done without sending anything to IBKR.'
             : 'Dry run disabled. Triggered rules will place real orders again.');
+    }
+
+    /**
+     * Only ever touches simulated records, so real order history can never be caught up in it.
+     */
+    public function clearDryRun(): RedirectResponse
+    {
+        $cleared = Order::where('status', 'simulated')->count();
+
+        if ($cleared > 0) {
+            Order::where('status', 'simulated')->delete();
+        }
+
+        return back()->with('success', $cleared === 0
+            ? 'There were no simulated orders to clear.'
+            : "Cleared {$cleared} simulated ".Str::plural('order', $cleared).'. Positions can trigger again in the simulation.');
     }
 
     public function syncPrices(SyncPricesAction $action): RedirectResponse
