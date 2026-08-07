@@ -17,6 +17,6 @@ return [
      */
     'events' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('STOCKS_NOTIFICATION_EVENTS', 'placed,filled,failed'))
+        explode(',', (string) env('STOCKS_NOTIFICATION_EVENTS', 'placed,filled,failed,unreconciled'))
     ))),
 ];

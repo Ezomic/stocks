@@ -28,6 +28,14 @@
     @endif
 </div>
 
+@if($unreconciledCount > 0)
+<div class="auth-banner">
+    &#9679; <strong>{{ $unreconciledCount }} {{ Str::plural('order', $unreconciledCount) }} could not be reconciled.</strong>
+    The broker stopped reporting {{ $unreconciledCount === 1 ? 'it' : 'them' }} before the outcome was known.
+    <a href="/orders" class="btn btn-sm">Review</a>
+</div>
+@endif
+
 @if($stalePriceCount > 0)
 <div class="auth-banner">
     &#9679; {{ $stalePriceCount }} {{ Str::plural('position', $stalePriceCount) }}
@@ -122,8 +130,8 @@
             <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>
-                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange', default=>'' } @endphp
-                <span class="badge {{ $cls }}">{{ $o->status === 'simulated' ? 'simulated (dry run)' : $o->status }}</span>
+                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange','unreconciled'=>'badge-orange', default=>'' } @endphp
+                <span class="badge {{ $cls }}">{{ match($o->status) { 'simulated' => 'simulated (dry run)', 'unreconciled' => 'needs review', default => $o->status } }}</span>
             </td>
             <td style="color:var(--muted)">{{ $o->created_at->diffForHumans() }}</td>
         </tr>

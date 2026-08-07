@@ -53,6 +53,7 @@ class DashboardController extends Controller
             'recentOrders' => Order::with('position')->latest()->limit(5)->get(),
             'inactiveAccountCount' => Position::count() - count($tradedIds),
             'stalePriceCount' => $stalePriceCount,
+            'unreconciledCount' => Order::where('status', 'unreconciled')->count(),
             'tradingEnabled' => Setting::tradingEnabled(),
             'dryRun' => Setting::dryRun(),
             'maxPriceAgeMinutes' => PriceSnapshot::maxAgeMinutes(),

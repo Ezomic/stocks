@@ -58,6 +58,17 @@ class Order extends Model
         ];
     }
 
+    /**
+     * How long a placed order may go unconfirmed by the broker before it is treated as
+     * abandoned rather than in flight.
+     */
+    public static function reconcileTimeoutMinutes(): int
+    {
+        $minutes = config('ibkr.order_reconcile_timeout_minutes');
+
+        return is_numeric($minutes) && (int) $minutes > 0 ? (int) $minutes : 30;
+    }
+
     /** @return BelongsTo<Position, $this> */
     public function position(): BelongsTo
     {

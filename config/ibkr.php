@@ -26,6 +26,13 @@ return [
     'snapshot_retention_days' => (int) env('STOCKS_SNAPSHOT_RETENTION_DAYS', 30),
 
     /*
+     * How long a placed order may go unconfirmed before it is reconciled against the broker's
+     * own position and taken out of flight. Rule evaluation skips a position while it has an
+     * order in flight, so an order that never resolves would otherwise freeze it for good.
+     */
+    'order_reconcile_timeout_minutes' => (int) env('IBKR_ORDER_RECONCILE_TIMEOUT_MINUTES', 30),
+
+    /*
      * The gateway runs on localhost, so anything slow is wedged rather than far away. Short
      * limits keep a stalled gateway from holding a page render or a scheduled run open.
      */
