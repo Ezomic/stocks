@@ -85,7 +85,7 @@
 @else
 <div class="card" style="padding:0">
     <table>
-        <thead><tr><th>Side</th><th>Qty</th><th>Type</th><th>Status</th><th>Placed</th><th>Filled</th><th>Fill price</th></tr></thead>
+        <thead><tr><th>Side</th><th>Qty</th><th>Type</th><th>Status</th><th>Placed</th><th>Filled</th><th>Fill price</th><th></th></tr></thead>
         <tbody>
         @foreach($orders as $o)
         <tr>
@@ -93,12 +93,24 @@
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>{{ strtoupper($o->order_type) }}</td>
             <td>
-                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue', default=>'' } @endphp
-                <span class="badge {{ $cls }}">{{ $o->status }}</span>
+                @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange','unreconciled'=>'badge-orange', default=>'' } @endphp
+                <span class="badge {{ $cls }}">{{ match($o->status) { 'simulated' => 'simulated (dry run)', 'unreconciled' => 'needs review', default => $o->status } }}</span>
+                @if($o->status === 'placed' && $o->cancel_requested_at)
+                    <span class="badge badge-orange">cancelling</span>
+                @endif
             </td>
             <td style="color:var(--muted)">{{ $o->placed_at?->format('d M H:i') ?? '—' }}</td>
             <td style="color:var(--muted)">{{ $o->filled_at?->format('d M H:i') ?? '—' }}</td>
             <td>{{ $o->fill_price ? $position->currency.' '.number_format((float)$o->fill_price, 2) : '—' }}</td>
+            <td>
+                @if($o->status === 'placed' && $o->broker_order_id && ! $o->cancel_requested_at)
+                <form method="POST" action="{{ route('orders.cancel', $o) }}" style="margin:0"
+                      onsubmit="return confirm('Ask IBKR to cancel this order?')">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                </form>
+                @endif
+            </td>
         </tr>
         @endforeach
         </tbody>

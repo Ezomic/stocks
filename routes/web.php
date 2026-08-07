@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('rules', RuleController::class)->except(['show'])->names('rules');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings/trading', [SettingsController::class, 'updateTrading'])->name('settings.trading');
