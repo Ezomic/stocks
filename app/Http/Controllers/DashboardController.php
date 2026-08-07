@@ -11,11 +11,40 @@ use App\Models\Rule;
 use App\Models\Setting;
 use App\Services\IbkrAuthService;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function __construct(private readonly IbkrAuthService $auth) {}
+
+    /**
+     * Totals are kept per currency rather than added together. Converting would need an FX
+     * rate source, which is a second price feed with its own staleness problem, and until
+     * there is one a single number across currencies is simply wrong.
+     *
+     * @param  Collection<int, Position>  $positions
+     * @return array<int, array<string, mixed>>
+     */
+    private function totalsByCurrency(Collection $positions): array
+    {
+        return $positions
+            ->groupBy('currency')
+            ->map(function (Collection $group, string $currency): array {
+                $value = $group->sum(fn (Position $p): float => is_numeric($p->current_value) ? (float) $p->current_value : 0.0);
+                $cost = $group->sum(fn (Position $p): float => (float) $p->avg_buy_price * (float) $p->quantity);
+
+                return [
+                    'currency' => $currency,
+                    'value' => $value,
+                    'gainPct' => $cost > 0.0 ? ($value - $cost) / $cost * 100 : null,
+                    'positions' => $group->count(),
+                ];
+            })
+            ->sortBy('currency')
+            ->values()
+            ->all();
+    }
 
     public function index(): View
     {
@@ -42,14 +71,9 @@ class DashboardController extends Controller
             return $position;
         });
 
-        $totalValue = $positions->sum(fn (Position $p): float => is_numeric($p->current_value) ? (float) $p->current_value : 0.0);
-        $totalCost = $positions->sum(fn ($p) => (float) $p->avg_buy_price * (float) $p->quantity);
-        $totalGainPct = $totalCost > 0 ? ($totalValue - $totalCost) / $totalCost * 100 : 0;
-
         return view('dashboard.index', [
             'positions' => $positions,
-            'totalValue' => $totalValue,
-            'totalGainPct' => $totalGainPct,
+            'totals' => $this->totalsByCurrency($positions),
             'ibkrAuthenticated' => $this->auth->isAuthenticated(),
             'recentOrders' => Order::with('position')->latest()->limit(5)->get(),
             'inactiveAccountCount' => Position::count() - count($tradedIds),

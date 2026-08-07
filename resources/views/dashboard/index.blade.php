@@ -54,16 +54,25 @@
 @endif
 
 <div class="stats-row">
+    @forelse($totals as $total)
+    <div class="stat">
+        <div class="stat-label">
+            Value ({{ $total['currency'] }})
+            @if(count($totals) > 1)<span style="color:var(--muted)"> · {{ $total['positions'] }} {{ Str::plural('position', $total['positions']) }}</span>@endif
+        </div>
+        <div class="stat-value">{{ $total['value'] > 0 ? $total['currency'].' '.number_format($total['value'], 2) : '—' }}</div>
+        @if($total['gainPct'] !== null)
+        <div class="{{ $total['gainPct'] >= 0 ? 'gain' : 'loss' }}" style="font-size:13px">
+            {{ sprintf('%+.2f', $total['gainPct']) }}%
+        </div>
+        @endif
+    </div>
+    @empty
     <div class="stat">
         <div class="stat-label">Portfolio value</div>
-        <div class="stat-value">{{ $totalValue > 0 ? '$'.number_format($totalValue, 2) : '—' }}</div>
+        <div class="stat-value">—</div>
     </div>
-    <div class="stat">
-        <div class="stat-label">Total gain/loss</div>
-        <div class="stat-value @if($totalGainPct >= 0) gain @else loss @endif">
-            {{ $totalGainPct !== 0 ? sprintf('%+.2f', $totalGainPct).'%' : '—' }}
-        </div>
-    </div>
+    @endforelse
     <div class="stat">
         <div class="stat-label">Positions</div>
         <div class="stat-value">{{ $positions->count() }}</div>
