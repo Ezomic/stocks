@@ -40,7 +40,7 @@
                 <a href="/positions/{{ $p->id }}/edit" class="btn btn-sm">Edit</a>
                 <form method="POST" action="/positions/{{ $p->id }}" style="margin:0">
                     @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this position?')">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this position? Its order history is kept and stays visible on the orders page.')">Delete</button>
                 </form>
             </td>
         </tr>

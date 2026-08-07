@@ -68,9 +68,7 @@ class OrderStatusChanged extends Notification implements ShouldQueue
 
     private function symbol(): string
     {
-        $position = $this->order->position;
-
-        return $position instanceof Position ? $position->symbol : 'unknown';
+        return $this->order->symbol ?? 'unknown';
     }
 
     private function price(): string
@@ -82,7 +80,7 @@ class OrderStatusChanged extends Notification implements ShouldQueue
             return trim($currency.' '.$this->order->fill_price).' (filled)';
         }
 
-        $snapshot = $position instanceof Position ? PriceSnapshot::latestFor($position->symbol) : null;
+        $snapshot = $this->order->symbol === null ? null : PriceSnapshot::latestFor($this->order->symbol);
 
         return $snapshot === null
             ? 'unknown'

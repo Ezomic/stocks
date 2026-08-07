@@ -21,7 +21,7 @@ class OrderNotifier
     {
         Log::info("Order {$event}", [
             'order_id' => $order->id,
-            'symbol' => $order->position?->symbol,
+            'symbol' => $order->symbol,
             'side' => $order->side,
             'quantity' => $order->quantity,
         ]);

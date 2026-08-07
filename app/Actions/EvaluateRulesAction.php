@@ -46,7 +46,10 @@ class EvaluateRulesAction
             ? ['pending', 'placed', 'simulated']
             : ['pending', 'placed'];
 
+        // An order kept from a deleted position has no position_id, and a single NULL in a
+        // NOT IN list makes the whole comparison match nothing, which would stop the engine.
         $positionsWithOpenOrders = Order::whereIn('status', $blockingStatuses)
+            ->whereNotNull('position_id')
             ->pluck('position_id')
             ->all();
 
