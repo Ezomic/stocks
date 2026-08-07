@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/two-factor', [TwoFactorController::class, 'store'])->name('two-factor.store');
     Route::post('/settings/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('two-factor.confirm');
     Route::post('/settings/two-factor/recovery-codes', [TwoFactorController::class, 'recoveryCodes'])->name('two-factor.recovery-codes');
+    Route::post('/settings/two-factor/show-recovery-codes', [TwoFactorController::class, 'showRecoveryCodes'])->name('two-factor.show-recovery-codes');
     Route::delete('/settings/two-factor', [TwoFactorController::class, 'destroy'])->name('two-factor.destroy');
     Route::post('/settings/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
     Route::delete('/settings/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');

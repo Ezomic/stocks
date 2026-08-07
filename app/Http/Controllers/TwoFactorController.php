@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmPasswordRequest;
 use App\Models\User;
 use App\Services\TwoFactorAuthenticator;
 use Illuminate\Http\RedirectResponse;
@@ -48,18 +49,35 @@ class TwoFactorController extends Controller
             ->with('success', 'Two-factor authentication is on. Store your recovery codes somewhere safe.');
     }
 
-    public function recoveryCodes(Request $request): RedirectResponse
+    /**
+     * Shown once and then never again on their own, so seeing them later costs a password.
+     */
+    public function showRecoveryCodes(ConfirmPasswordRequest $request): RedirectResponse
     {
         $user = $this->user($request);
 
-        $user->forceFill([
-            'two_factor_recovery_codes' => $this->authenticator->generateRecoveryCodes(),
-        ])->save();
-
-        return redirect()->route('settings')->with('success', 'New recovery codes generated. The old ones no longer work.');
+        return redirect()->route('settings')
+            ->with('recoveryCodes', $user->two_factor_recovery_codes ?? []);
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function recoveryCodes(ConfirmPasswordRequest $request): RedirectResponse
+    {
+        $user = $this->user($request);
+
+        $codes = $this->authenticator->generateRecoveryCodes();
+
+        $user->forceFill(['two_factor_recovery_codes' => $codes])->save();
+
+        return redirect()->route('settings')
+            ->with('success', 'New recovery codes generated. The old ones no longer work.')
+            ->with('recoveryCodes', $codes);
+    }
+
+    /**
+     * Stripping the second factor is exactly what someone who has borrowed a live session
+     * would want to do, so it costs the password they do not have.
+     */
+    public function destroy(ConfirmPasswordRequest $request): RedirectResponse
     {
         $user = $this->user($request);
 

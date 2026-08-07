@@ -89,24 +89,56 @@
         <div class="alert alert-error">{{ $message }}</div>
     @enderror
 
+    @error('password', 'twoFactor')
+        <div class="alert alert-error">{{ $message }}</div>
+    @enderror
+
     @if($twoFactorConfirmed)
         <div style="display:flex;align-items:center;gap:16px">
             <span class="badge badge-green">On</span>
             <p style="font-size:13px;color:var(--muted);margin:0;flex:1">
                 A code from your authenticator app is required after your password.
             </p>
-            <form method="POST" action="{{ route('two-factor.destroy') }}" style="margin:0"
-                  onsubmit="return confirm('Turn off two-factor authentication? Your password becomes the only thing protecting this account.')">
-                @csrf @method('DELETE')
-                <button type="submit" class="btn btn-danger">Turn off</button>
-            </form>
         </div>
 
-        <form method="POST" action="{{ route('two-factor.recovery-codes') }}" style="margin-top:16px"
-              onsubmit="return confirm('Generate new recovery codes? The current ones stop working.')">
-            @csrf
-            <button type="submit" class="btn btn-sm">Generate new recovery codes</button>
-        </form>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+            <details>
+                <summary style="cursor:pointer;font-size:13px">Show recovery codes</summary>
+                <form method="POST" action="{{ route('two-factor.show-recovery-codes') }}"
+                      style="display:flex;gap:8px;margin-top:8px">
+                    @csrf
+                    <input type="password" name="password" placeholder="Your password"
+                           autocomplete="current-password" style="flex:1">
+                    <button type="submit" class="btn btn-sm">Show</button>
+                </form>
+            </details>
+
+            <details>
+                <summary style="cursor:pointer;font-size:13px">Generate new recovery codes</summary>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">The current codes stop working.</p>
+                <form method="POST" action="{{ route('two-factor.recovery-codes') }}"
+                      style="display:flex;gap:8px;margin-top:8px">
+                    @csrf
+                    <input type="password" name="password" placeholder="Your password"
+                           autocomplete="current-password" style="flex:1">
+                    <button type="submit" class="btn btn-sm">Regenerate</button>
+                </form>
+            </details>
+
+            <details>
+                <summary style="cursor:pointer;font-size:13px;color:var(--red)">Turn off two-factor authentication</summary>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">
+                    Your password becomes the only thing protecting an account that can place trades.
+                </p>
+                <form method="POST" action="{{ route('two-factor.destroy') }}"
+                      style="display:flex;gap:8px;margin-top:8px">
+                    @csrf @method('DELETE')
+                    <input type="password" name="password" placeholder="Your password"
+                           autocomplete="current-password" style="flex:1">
+                    <button type="submit" class="btn btn-danger">Turn off</button>
+                </form>
+            </details>
+        </div>
     @elseif($twoFactorPending)
         <p style="font-size:13px;color:var(--muted);margin-top:0">
             Scan this with your authenticator app, then enter a code to finish.
@@ -141,6 +173,7 @@
         <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
                 Recovery codes. Each one works once, for when you lose the authenticator.
+                @if($twoFactorConfirmed) Store them now, they are not shown again without your password. @endif
             </div>
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
                 @foreach($twoFactorRecoveryCodes as $recoveryCode)
