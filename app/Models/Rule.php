@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int|null $position_id
+ * @property string $action
  * @property string|null $take_profit_pct
  * @property string|null $stop_loss_pct
  * @property string $stop_loss_type
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'position_id',
+    'action',
     'take_profit_pct',
     'stop_loss_pct',
     'stop_loss_type',
@@ -65,6 +67,11 @@ class Rule extends Model
         }
 
         return $position->last_triggered_at->addMinutes($this->cooldown_minutes)->isFuture();
+    }
+
+    public function alertsOnly(): bool
+    {
+        return $this->action === 'notify';
     }
 
     public function isTrailing(): bool

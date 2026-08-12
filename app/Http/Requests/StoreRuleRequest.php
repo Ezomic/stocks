@@ -27,6 +27,7 @@ class StoreRuleRequest extends FormRequest
                 'exists:positions,id',
                 ValidationRule::unique('rules', 'position_id')->ignore($this->ignoredRuleId()),
             ],
+            'action' => ['nullable', 'in:order,notify'],
             'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_type' => ['nullable', 'in:entry,trailing'],
