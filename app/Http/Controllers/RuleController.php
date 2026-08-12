@@ -74,6 +74,7 @@ class RuleController extends Controller
     {
         return [
             'position_id' => $request->integer('position_id') ?: null,
+            'action' => $request->string('action')->toString() ?: 'order',
             'take_profit_pct' => $request->filled('take_profit_pct') ? $request->float('take_profit_pct') : null,
             'stop_loss_pct' => $request->filled('stop_loss_pct') ? $request->float('stop_loss_pct') : null,
             'stop_loss_type' => $request->string('stop_loss_type')->toString() ?: 'entry',

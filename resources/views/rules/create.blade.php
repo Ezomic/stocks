@@ -17,6 +17,14 @@
                 @endforeach
             </select>
         </div>
+        <div class="form-group">
+            <label>When it fires</label>
+            <select name="action">
+                <option value="order" @selected(old('action', 'order') === 'order')>Place a sell order</option>
+                <option value="notify" @selected(old('action', 'order') === 'notify')>Only notify me</option>
+            </select>
+            <span style="color:var(--muted);font-size:12px">An alert rule watches the same levels with the same cooldown, it just does not trade.</span>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div class="form-group">
                 <label>Take profit %</label>

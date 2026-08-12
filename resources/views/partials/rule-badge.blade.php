@@ -8,8 +8,10 @@
 @elseif($governing === null)
     <span class="badge">No rule</span>
 @else
-    <span class="badge badge-blue">
+    <span class="badge {{ $governing->alertsOnly() ? 'badge-orange' : 'badge-blue' }}"
+          title="{{ $governing->alertsOnly() ? 'Notifies only, places no orders' : 'Places a sell order when a level is crossed' }}">
         @unless($own) Global: @endunless
+        @if($governing->alertsOnly()) Alert: @endif
         TP {{ $governing->take_profit_pct ?? '—' }}% / SL {{ $governing->stop_loss_pct ?? '—' }}%
     </span>
 @endif

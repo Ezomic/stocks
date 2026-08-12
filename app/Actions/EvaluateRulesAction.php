@@ -9,9 +9,12 @@ use App\Models\Position;
 use App\Models\PriceSnapshot;
 use App\Models\Rule;
 use App\Models\Setting;
+use App\Models\User;
+use App\Notifications\ThresholdCrossed;
 use App\Services\IbkrAuthService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class EvaluateRulesAction
 {
@@ -19,6 +22,25 @@ class EvaluateRulesAction
         private readonly PlaceOrderAction $placeOrder,
         private readonly IbkrAuthService $auth,
     ) {}
+
+    /**
+     * An alert rule shares the thresholds and the cooldown with a trading rule, so the two
+     * cannot disagree about when a level was crossed. Only the outcome differs.
+     */
+    private function alert(Position $position, Rule $rule, string $threshold, float $price): void
+    {
+        Log::info('Threshold crossed on an alert-only rule', [
+            'symbol' => $position->symbol,
+            'threshold' => $threshold,
+            'price' => $price,
+        ]);
+
+        try {
+            Notification::send(User::all(), new ThresholdCrossed($position, $rule, $threshold, $price));
+        } catch (\Throwable $e) {
+            Log::warning('Threshold alert could not be dispatched: '.$e->getMessage());
+        }
+    }
 
     public function handle(): void
     {
@@ -88,7 +110,12 @@ class EvaluateRulesAction
                     return;
                 }
 
-                $this->placeOrder->handle($position, 'sell', $rule, $rule->sellQuantity($position));
+                if ($rule->alertsOnly()) {
+                    $this->alert($position, $rule, $takeProfitHit ? 'take_profit' : 'stop_loss', $price);
+                } else {
+                    $this->placeOrder->handle($position, 'sell', $rule, $rule->sellQuantity($position));
+                }
+
                 $position->update(['last_triggered_at' => Carbon::now()]);
             });
     }
