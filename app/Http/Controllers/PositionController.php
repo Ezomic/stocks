@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Position;
 use App\Models\PriceSnapshot;
+use App\Models\Rule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -62,7 +63,21 @@ class PositionController extends Controller
         $currentPrice = $snapshots->last()?->price;
         $gainPct = $currentPrice ? $position->gainPct((float) $currentPrice) : null;
 
-        return view('positions.show', compact('position', 'snapshots', 'orders', 'currentPrice', 'gainPct'));
+        $rule = $position->activeRule(Rule::whereNull('position_id')->first());
+        $peakPrice = PriceSnapshot::peakFor($position->symbol);
+
+        return view('positions.show', [
+            'position' => $position,
+            'snapshots' => $snapshots,
+            'orders' => $orders,
+            'currentPrice' => $currentPrice,
+            'gainPct' => $gainPct,
+            'governingRule' => $rule,
+            'peakPrice' => $peakPrice,
+            'peakSince' => PriceSnapshot::earliestFor($position->symbol),
+            'stopLossPrice' => $rule?->stopLossPrice($position, $peakPrice),
+            'takeProfitPrice' => $rule?->takeProfitPrice($position),
+        ]);
     }
 
     public function edit(Position $position): View

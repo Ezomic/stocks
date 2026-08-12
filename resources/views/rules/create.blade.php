@@ -28,6 +28,14 @@
             </div>
         </div>
         <div class="form-group">
+            <label>Stop loss measured from</label>
+            <select name="stop_loss_type">
+                <option value="entry" @selected(old('stop_loss_type', 'entry') === 'entry')>Entry price (fixed)</option>
+                <option value="trailing" @selected(old('stop_loss_type') === 'trailing')>Highest price seen (trailing)</option>
+            </select>
+            <span style="color:var(--muted);font-size:12px">A trailing stop follows the price up and fires on a fall from the peak, not from what you paid.</span>
+        </div>
+        <div class="form-group">
             <label>Cooldown (minutes)</label>
             <input type="number" name="cooldown_minutes" value="{{ old('cooldown_minutes', 60) }}" min="1" required>
         </div>
