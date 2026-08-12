@@ -68,6 +68,9 @@
         @if($position->last_triggered_at)
         <div><span style="color:var(--muted);font-size:12px">Last triggered</span><br>{{ $position->last_triggered_at->diffForHumans() }}</div>
         @endif
+        @if($position->rule->isTrailing())
+        <div><span style="color:var(--muted);font-size:12px">Type</span><br><span class="badge badge-blue">Trailing</span></div>
+        @endif
         <div style="margin-left:auto">
             <a href="/rules/{{ $position->rule->id }}/edit" class="btn btn-sm">Edit rule</a>
         </div>
@@ -75,6 +78,32 @@
 </div>
 @else
 <div class="card" style="color:var(--muted);font-size:13px">No rule set for this position. <a href="/rules/create?position_id={{ $position->id }}">Add one</a>.</div>
+@endif
+
+@if($governingRule)
+<div class="card">
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div>
+            <span style="color:var(--muted);font-size:12px">Sells at (take profit)</span><br>
+            <strong>{{ $takeProfitPrice !== null ? $position->currency.' '.number_format($takeProfitPrice, 2) : '—' }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--muted);font-size:12px">Sells at (stop loss)</span><br>
+            <strong>{{ $stopLossPrice !== null ? $position->currency.' '.number_format($stopLossPrice, 2) : '—' }}</strong>
+        </div>
+        @if($governingRule->isTrailing())
+        <div>
+            <span style="color:var(--muted);font-size:12px">Peak price</span><br>
+            <strong>{{ $peakPrice !== null ? $position->currency.' '.number_format($peakPrice, 2) : '—' }}</strong>
+        </div>
+        <div style="color:var(--muted);font-size:12px;max-width:280px">
+            The trailing stop follows this peak. It is the highest price on record
+            @if($peakSince) since {{ $peakSince->format('d M') }} @endif,
+            which is as far back as price history is kept, not necessarily since you bought.
+        </div>
+        @endif
+    </div>
+</div>
 @endif
 
 <div class="page-header" style="margin-top:20px">

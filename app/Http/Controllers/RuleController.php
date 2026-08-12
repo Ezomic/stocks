@@ -76,6 +76,7 @@ class RuleController extends Controller
             'position_id' => $request->integer('position_id') ?: null,
             'take_profit_pct' => $request->filled('take_profit_pct') ? $request->float('take_profit_pct') : null,
             'stop_loss_pct' => $request->filled('stop_loss_pct') ? $request->float('stop_loss_pct') : null,
+            'stop_loss_type' => $request->string('stop_loss_type')->toString() ?: 'entry',
             'cooldown_minutes' => $request->integer('cooldown_minutes'),
             'is_active' => $request->boolean('is_active'),
         ];

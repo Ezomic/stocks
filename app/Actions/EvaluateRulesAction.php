@@ -71,12 +71,20 @@ class EvaluateRulesAction
                     return;
                 }
 
-                $gainPct = $position->gainPct((float) $snapshot->price);
+                $price = (float) $snapshot->price;
+                $gainPct = $position->gainPct($price);
 
-                $triggered = ($rule->take_profit_pct !== null && $gainPct >= (float) $rule->take_profit_pct)
-                    || ($rule->stop_loss_pct !== null && $gainPct <= -(float) $rule->stop_loss_pct);
+                $takeProfitHit = $rule->take_profit_pct !== null
+                    && $gainPct >= (float) $rule->take_profit_pct;
 
-                if (! $triggered) {
+                $stopLossPrice = $rule->stopLossPrice(
+                    $position,
+                    $rule->isTrailing() ? PriceSnapshot::peakFor($position->symbol) : null
+                );
+
+                $stopLossHit = $stopLossPrice !== null && $price <= $stopLossPrice;
+
+                if (! $takeProfitHit && ! $stopLossHit) {
                     return;
                 }
 

@@ -42,6 +42,25 @@ class PriceSnapshot extends Model
             ->first();
     }
 
+    /**
+     * The highest price on record for a symbol. Snapshots are pruned, so this is the peak
+     * within the retention window rather than since the position was opened. Callers show
+     * the window alongside the number so the difference is visible rather than assumed.
+     */
+    public static function peakFor(string $symbol): ?float
+    {
+        $peak = self::where('symbol', $symbol)->max('price');
+
+        return is_numeric($peak) ? (float) $peak : null;
+    }
+
+    public static function earliestFor(string $symbol): ?Carbon
+    {
+        $earliest = self::where('symbol', $symbol)->min('fetched_at');
+
+        return is_string($earliest) ? Carbon::parse($earliest) : null;
+    }
+
     public function isStale(): bool
     {
         return $this->fetched_at->isBefore(Carbon::now()->subMinutes(self::maxAgeMinutes()));

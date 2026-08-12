@@ -29,6 +29,7 @@ class StoreRuleRequest extends FormRequest
             ],
             'take_profit_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
+            'stop_loss_type' => ['nullable', 'in:entry,trailing'],
             'is_active' => ['boolean'],
             'cooldown_minutes' => ['required', 'integer', 'min:1'],
         ];
