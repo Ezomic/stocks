@@ -33,6 +33,8 @@ class PlaceOrderAction
         $order = Order::create([
             'position_id' => $position->id,
             'symbol' => $position->symbol,
+            'cost_basis' => $position->avg_buy_price,
+            'currency' => $position->currency,
             'rule_id' => $rule?->id,
             'side' => $side,
             'quantity' => max($quantity, 0),

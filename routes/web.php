@@ -8,6 +8,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RuleController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TradeHistoryController;
 use App\Http\Controllers\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('rules', RuleController::class)->except(['show'])->names('rules');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/trades', [TradeHistoryController::class, 'index'])->name('trades.index');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
