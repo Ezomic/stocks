@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\ThresholdCrossed;
 use App\Services\IbkrAuthService;
+use App\Services\MarketHours;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -21,6 +22,7 @@ class EvaluateRulesAction
     public function __construct(
         private readonly PlaceOrderAction $placeOrder,
         private readonly IbkrAuthService $auth,
+        private readonly MarketHours $marketHours,
     ) {}
 
     /**
@@ -90,6 +92,13 @@ class EvaluateRulesAction
                 $rule = $position->activeRule($globalRule);
 
                 if (! $rule || $rule->isInCooldown($position)) {
+                    return;
+                }
+
+                // An order sent into a closed market does not execute, and until it is
+                // reconciled it also blocks this position from being evaluated at all. An
+                // alert has no such problem, so it is not gated on the venue being open.
+                if (! $rule->alertsOnly() && $this->marketHours->isOpen($position) === false) {
                     return;
                 }
 

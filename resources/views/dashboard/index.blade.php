@@ -46,6 +46,14 @@
 </div>
 @endif
 
+@if($closedMarketCount > 0)
+<div class="auth-banner">
+    &#9679; {{ $closedMarketCount }} {{ Str::plural('position', $closedMarketCount) }}
+    {{ $closedMarketCount === 1 ? 'trades' : 'trade' }} on a market that is currently closed.
+    Rules still watch {{ $closedMarketCount === 1 ? 'it' : 'them' }}, but no order goes out until the venue reopens.
+</div>
+@endif
+
 @if($stalePriceCount > 0)
 <div class="auth-banner">
     &#9679; {{ $stalePriceCount }} {{ Str::plural('position', $stalePriceCount) }}
