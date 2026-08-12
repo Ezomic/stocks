@@ -30,6 +30,8 @@ class OrderFactory extends Factory
             'placed_at' => null,
             'filled_at' => null,
             'fill_price' => null,
+            'cost_basis' => null,
+            'currency' => 'USD',
             'error_message' => null,
         ];
     }
