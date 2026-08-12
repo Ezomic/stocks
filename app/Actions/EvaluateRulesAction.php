@@ -88,7 +88,7 @@ class EvaluateRulesAction
                     return;
                 }
 
-                $this->placeOrder->handle($position, 'sell', $rule);
+                $this->placeOrder->handle($position, 'sell', $rule, $rule->sellQuantity($position));
                 $position->update(['last_triggered_at' => Carbon::now()]);
             });
     }

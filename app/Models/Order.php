@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $rule_id
  * @property string $side
  * @property string $quantity
+ * @property string|null $remaining_quantity
  * @property string $order_type
  * @property string|null $limit_price
  * @property string $status
@@ -36,6 +37,7 @@ use Illuminate\Support\Carbon;
     'rule_id',
     'side',
     'quantity',
+    'remaining_quantity',
     'order_type',
     'limit_price',
     'status',

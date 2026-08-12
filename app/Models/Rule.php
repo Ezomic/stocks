@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $take_profit_pct
  * @property string|null $stop_loss_pct
  * @property string $stop_loss_type
+ * @property string $sell_pct
  * @property bool $is_active
  * @property int $cooldown_minutes
  * @property Carbon $created_at
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
     'take_profit_pct',
     'stop_loss_pct',
     'stop_loss_type',
+    'sell_pct',
     'is_active',
     'cooldown_minutes',
 ])]
@@ -40,6 +42,7 @@ class Rule extends Model
         return [
             'take_profit_pct' => 'decimal:2',
             'stop_loss_pct' => 'decimal:2',
+            'sell_pct' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -96,6 +99,31 @@ class Rule extends Model
         }
 
         return (float) $position->avg_buy_price * (1 + ((float) $this->take_profit_pct / 100));
+    }
+
+    /**
+     * How much to sell when this rule fires. A percentage of what is held right now rather
+     * than a share count, because the quantity shrinks as a ladder works through the position.
+     *
+     * Returns zero when the step is too small to express in whole units. The caller reports
+     * that rather than rounding it away, because a step that silently does nothing looks
+     * identical to a rule that never triggered.
+     */
+    public function sellQuantity(Position $position): float
+    {
+        $held = (float) $position->quantity;
+        $wanted = $held * ((float) $this->sell_pct / 100);
+
+        if ($position->allowsFractionalQuantity()) {
+            return min($wanted, $held);
+        }
+
+        return min(floor($wanted), $held);
+    }
+
+    public function isPartial(): bool
+    {
+        return (float) $this->sell_pct < 100.0;
     }
 
     public function isGlobal(): bool

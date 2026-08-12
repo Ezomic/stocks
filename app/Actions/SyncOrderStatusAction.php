@@ -184,9 +184,10 @@ class SyncOrderStatusAction
 
         $delta = $order->side === 'sell' ? -$filledQuantity : $filledQuantity;
 
-        $position->update([
-            'quantity' => max(0.0, (float) $position->quantity + $delta),
-        ]);
+        $remaining = max(0.0, (float) $position->quantity + $delta);
+
+        $position->update(['quantity' => $remaining]);
+        $order->update(['remaining_quantity' => $remaining]);
     }
 
     /** @param array<string, mixed> $broker */

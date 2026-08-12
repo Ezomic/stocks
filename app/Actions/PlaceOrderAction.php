@@ -22,17 +22,38 @@ class PlaceOrderAction
         private readonly OrderNotifier $notifier,
     ) {}
 
-    public function handle(Position $position, string $side, ?Rule $rule = null): Order
+    /**
+     * A null quantity means the whole position, which is what every caller wanted before
+     * rules could sell a part of one.
+     */
+    public function handle(Position $position, string $side, ?Rule $rule = null, ?float $quantity = null): Order
     {
+        $quantity ??= (float) $position->quantity;
+
         $order = Order::create([
             'position_id' => $position->id,
             'symbol' => $position->symbol,
             'rule_id' => $rule?->id,
             'side' => $side,
-            'quantity' => $position->quantity,
+            'quantity' => max($quantity, 0),
             'order_type' => 'market',
             'status' => Setting::dryRun() ? 'simulated' : 'pending',
         ]);
+
+        // A ladder step too small to express in whole units must be reported rather than
+        // rounded away: doing nothing quietly is indistinguishable from never triggering.
+        if ($quantity <= 0) {
+            $order->update([
+                'status' => 'failed',
+                'error_message' => 'The rule asked for '.($rule instanceof Rule ? $rule->sell_pct : '100')
+                    .'% of '.rtrim(rtrim($position->quantity, '0'), '.').' '.$position->symbol
+                    .', which rounds to less than one unit. Nothing was sent to IBKR.',
+            ]);
+
+            $this->notifier->notify($order->refresh(), 'failed');
+
+            return $order;
+        }
 
         // The record of what would have been sent is the whole point of a dry run, so it is
         // written first and the gateway is simply never called.
@@ -45,7 +66,7 @@ class PlaceOrderAction
                 'conid' => (int) $position->ibkr_con_id,
                 'orderType' => 'MKT',
                 'side' => strtoupper($side),
-                'quantity' => (float) $position->quantity,
+                'quantity' => $quantity,
                 'tif' => 'DAY',
             ];
 
