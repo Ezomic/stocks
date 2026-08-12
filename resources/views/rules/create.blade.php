@@ -36,6 +36,11 @@
             <span style="color:var(--muted);font-size:12px">A trailing stop follows the price up and fires on a fall from the peak, not from what you paid.</span>
         </div>
         <div class="form-group">
+            <label>Sell how much when it fires</label>
+            <input type="number" name="sell_pct" value="{{ old('sell_pct', 100) }}" step="0.01" min="0.01" max="100">
+            <span style="color:var(--muted);font-size:12px">Percent of the quantity held at the time. 100 sells the whole position; a smaller figure takes part off and leaves the rest running.</span>
+        </div>
+        <div class="form-group">
             <label>Cooldown (minutes)</label>
             <input type="number" name="cooldown_minutes" value="{{ old('cooldown_minutes', 60) }}" min="1" required>
         </div>

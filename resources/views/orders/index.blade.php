@@ -11,7 +11,7 @@
     <table>
         <thead><tr>
             <th>Symbol</th><th>Side</th><th>Qty</th><th>Type</th>
-            <th>Status</th><th>Broker ID</th><th>Placed</th><th>Filled</th><th>Fill price</th><th></th>
+            <th>Remaining</th><th>Status</th><th>Broker ID</th><th>Placed</th><th>Filled</th><th>Fill price</th><th></th>
         </tr></thead>
         <tbody>
         @foreach($orders as $o)
@@ -27,6 +27,7 @@
             <td><span class="badge {{ $o->side === 'buy' ? 'badge-green' : 'badge-red' }}">{{ strtoupper($o->side) }}</span></td>
             <td>{{ rtrim(rtrim($o->quantity, '0'), '.') }}</td>
             <td>{{ strtoupper($o->order_type) }}</td>
+            <td style="color:var(--muted)">{{ $o->remaining_quantity !== null ? rtrim(rtrim($o->remaining_quantity, '0'), '.') : '—' }}</td>
             <td>
                 @php $cls = match($o->status) { 'filled'=>'badge-green','failed'=>'badge-red','placed'=>'badge-blue','simulated'=>'badge-orange','unreconciled'=>'badge-orange', default=>'' } @endphp
                 <span class="badge {{ $cls }}">{{ match($o->status) { 'simulated' => 'simulated (dry run)', 'unreconciled' => 'needs review', default => $o->status } }}</span>

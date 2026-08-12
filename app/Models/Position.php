@@ -135,6 +135,14 @@ class Position extends Model
             && abs((float) $this->broker_quantity - (float) $this->quantity) > 0.000001;
     }
 
+    /**
+     * Crypto trades in fractions; equities do not.
+     */
+    public function allowsFractionalQuantity(): bool
+    {
+        return strtoupper($this->market) === 'CRYPTO';
+    }
+
     public function gainPct(float $currentPrice): float
     {
         if ((float) $this->avg_buy_price === 0.0) {
