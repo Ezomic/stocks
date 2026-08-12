@@ -53,6 +53,15 @@ class IbkrClient
     }
 
     /**
+     * Contract details, including the venue trading hours and its timezone. The broker knows
+     * its own holidays and half-days; a hardcoded calendar does not.
+     */
+    public function contractInfo(string $conid): Response
+    {
+        return $this->http()->get("/v1/api/iserver/contract/{$conid}/info");
+    }
+
+    /**
      * Fetch price snapshots for one or more conids.
      * Field 31 = last traded price.
      */

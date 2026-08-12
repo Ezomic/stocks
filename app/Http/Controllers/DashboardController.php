@@ -10,13 +10,17 @@ use App\Models\PriceSnapshot;
 use App\Models\Rule;
 use App\Models\Setting;
 use App\Services\IbkrAuthService;
+use App\Services\MarketHours;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly IbkrAuthService $auth) {}
+    public function __construct(
+        private readonly IbkrAuthService $auth,
+        private readonly MarketHours $marketHours,
+    ) {}
 
     /**
      * Totals are kept per currency rather than added together. Converting would need an FX
@@ -48,6 +52,8 @@ class DashboardController extends Controller
 
     public function index(): View
     {
+        $marketHours = $this->marketHours;
+
         $positions = Position::with([
             'latestSnapshot',
             'rule',
@@ -80,6 +86,9 @@ class DashboardController extends Controller
             'stalePriceCount' => $stalePriceCount,
             'unreconciledCount' => Order::where('status', 'unreconciled')->count(),
             'driftedPositions' => $positions->filter(fn (Position $p): bool => $p->hasDrift())->values(),
+            'closedMarketCount' => $positions->filter(
+                fn (Position $p): bool => in_array($p->id, $tradedIds, true) && $marketHours->isOpen($p) === false
+            )->count(),
             'globalRule' => Rule::whereNull('position_id')->first(),
             'tradingEnabled' => Setting::tradingEnabled(),
             'dryRun' => Setting::dryRun(),
