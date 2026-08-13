@@ -97,6 +97,34 @@
     </div>
 </div>
 
+@foreach($valueHistory as $currency => $points)
+    @if($points->count() > 1)
+    <div class="card">
+        <h2 style="margin-top:0">Portfolio value ({{ $currency }})</h2>
+        @php
+            $values = $points->map(fn($p) => (float) $p->value);
+            $min = $values->min(); $max = $values->max();
+            $range = ($max - $min) ?: 1;
+            $w = 800; $h = 90;
+            $line = $values->values()->map(function ($v, $i) use ($values, $min, $range, $w, $h) {
+                $x = $i / max($values->count() - 1, 1) * $w;
+                $y = $h - (($v - $min) / $range * ($h - 12)) - 6;
+                return "$x,$y";
+            })->implode(' ');
+            $colour = $values->last() >= $values->first() ? '#34c77b' : '#f25757';
+        @endphp
+        <svg viewBox="0 0 {{ $w }} {{ $h }}" style="width:100%;height:90px;display:block">
+            <polyline points="{{ $line }}" fill="none" stroke="{{ $colour }}" stroke-width="1.5"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:6px">
+            <span>{{ $points->first()->recorded_on->format('d M Y') }}</span>
+            <span>{{ $currency }} {{ number_format((float) $points->last()->value, 2) }}</span>
+            <span>{{ $points->last()->recorded_on->format('d M Y') }}</span>
+        </div>
+    </div>
+    @endif
+@endforeach
+
 <div class="page-header">
     <h1>Positions</h1>
     <a href="/positions/create" class="btn btn-primary">+ Add position</a>

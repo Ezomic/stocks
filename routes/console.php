@@ -13,3 +13,6 @@ Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->with
 
 Schedule::command('prices:prune')->dailyAt('02:15');
 Schedule::command('ibkr:reconcile-positions')->dailyAt('02:30');
+
+// Recorded before the prune, so a day is never lost to retention.
+Schedule::command('portfolio:record')->dailyAt('02:00');
