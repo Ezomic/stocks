@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RuleController;
+use App\Http\Controllers\RuleReplayController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TradeHistoryController;
 use App\Http\Controllers\TwoFactorController;
@@ -29,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/positions/{position}', [PositionController::class, 'show'])->name('positions.show');
 
     Route::resource('rules', RuleController::class)->except(['show'])->names('rules');
+    Route::get('/rules-replay', RuleReplayController::class)->name('rules.replay');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/trades', [TradeHistoryController::class, 'index'])->name('trades.index');

@@ -56,6 +56,12 @@
             <input type="checkbox" name="is_active" value="1" id="is_active" @checked(old('is_active', $rule->is_active)) style="width:auto">
             <label for="is_active" style="margin:0">Active</label>
         </div>
+        <div class="form-group" style="border-top:1px solid var(--border);padding-top:12px">
+            <button type="submit" formaction="{{ route('rules.replay') }}" formmethod="GET" class="btn btn-sm">
+                Replay against stored prices
+            </button>
+            <span style="color:var(--muted);font-size:12px;margin-left:8px">See what these thresholds would have done, without waiting.</span>
+        </div>
         <button type="submit" class="btn btn-primary">Save changes</button>
     </form>
 </div>
