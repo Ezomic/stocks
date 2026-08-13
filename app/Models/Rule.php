@@ -19,6 +19,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $stop_loss_pct
  * @property string $stop_loss_type
  * @property string $sell_pct
+ * @property string|null $buy_below_pct
+ * @property string|null $buy_amount
+ * @property string|null $max_position_value
  * @property bool $is_active
  * @property int $cooldown_minutes
  * @property Carbon $created_at
@@ -31,6 +34,9 @@ use Illuminate\Support\Carbon;
     'stop_loss_pct',
     'stop_loss_type',
     'sell_pct',
+    'buy_below_pct',
+    'buy_amount',
+    'max_position_value',
     'is_active',
     'cooldown_minutes',
 ])]
@@ -45,6 +51,9 @@ class Rule extends Model
             'take_profit_pct' => 'decimal:2',
             'stop_loss_pct' => 'decimal:2',
             'sell_pct' => 'decimal:2',
+            'buy_below_pct' => 'decimal:2',
+            'buy_amount' => 'decimal:2',
+            'max_position_value' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -131,6 +140,46 @@ class Rule extends Model
     public function isPartial(): bool
     {
         return (float) $this->sell_pct < 100.0;
+    }
+
+    public function buys(): bool
+    {
+        return $this->buy_below_pct !== null && $this->buy_amount !== null;
+    }
+
+    public function buyTriggerPrice(Position $position): ?float
+    {
+        if ($this->buy_below_pct === null) {
+            return null;
+        }
+
+        return (float) $position->avg_buy_price * (1 - ((float) $this->buy_below_pct / 100));
+    }
+
+    /**
+     * How much to buy at this price, in units.
+     *
+     * The sizing model is a fixed cash amount per trigger, clamped by whatever headroom is
+     * left under max_position_value. Returns zero when the position is already at its cap or
+     * the headroom no longer buys a whole unit, which the caller reports rather than rounding
+     * away.
+     */
+    public function buyQuantity(Position $position, float $price): float
+    {
+        if (! $this->buys() || $price <= 0.0) {
+            return 0.0;
+        }
+
+        $spend = (float) $this->buy_amount;
+
+        if ($this->max_position_value !== null) {
+            $headroom = (float) $this->max_position_value - ((float) $position->quantity * $price);
+            $spend = min($spend, max($headroom, 0.0));
+        }
+
+        $units = $spend / $price;
+
+        return $position->allowsFractionalQuantity() ? $units : floor($units);
     }
 
     public function isGlobal(): bool

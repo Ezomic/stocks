@@ -79,6 +79,9 @@ class RuleController extends Controller
             'stop_loss_pct' => $request->filled('stop_loss_pct') ? $request->float('stop_loss_pct') : null,
             'stop_loss_type' => $request->string('stop_loss_type')->toString() ?: 'entry',
             'sell_pct' => $request->filled('sell_pct') ? $request->float('sell_pct') : 100,
+            'buy_below_pct' => $request->filled('buy_below_pct') ? $request->float('buy_below_pct') : null,
+            'buy_amount' => $request->filled('buy_amount') ? $request->float('buy_amount') : null,
+            'max_position_value' => $request->filled('max_position_value') ? $request->float('max_position_value') : null,
             'cooldown_minutes' => $request->integer('cooldown_minutes'),
             'is_active' => $request->boolean('is_active'),
         ];

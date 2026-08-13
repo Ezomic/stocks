@@ -47,9 +47,12 @@ class PlaceOrderAction
         if ($quantity <= 0) {
             $order->update([
                 'status' => 'failed',
-                'error_message' => 'The rule asked for '.($rule instanceof Rule ? $rule->sell_pct : '100')
-                    .'% of '.rtrim(rtrim($position->quantity, '0'), '.').' '.$position->symbol
-                    .', which rounds to less than one unit. Nothing was sent to IBKR.',
+                'error_message' => $side === 'buy'
+                    ? 'The buy rule for '.$position->symbol.' had no room left under its position'
+                        .' value cap, or the amount no longer buys a whole unit. Nothing was sent to IBKR.'
+                    : 'The rule asked for '.($rule instanceof Rule ? $rule->sell_pct : '100')
+                        .'% of '.rtrim(rtrim($position->quantity, '0'), '.').' '.$position->symbol
+                        .', which rounds to less than one unit. Nothing was sent to IBKR.',
             ]);
 
             $this->notifier->notify($order->refresh(), 'failed');

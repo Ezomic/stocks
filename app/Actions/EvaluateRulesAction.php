@@ -77,9 +77,10 @@ class EvaluateRulesAction
             ->pluck('position_id')
             ->all();
 
+        // No quantity filter here: a buy rule is precisely what applies to a position that
+        // holds nothing. The sell path checks the quantity for itself.
         Position::forActiveAccount()
             ->with('rule')
-            ->where('quantity', '>', 0)
             ->whereNotIn('id', $positionsWithOpenOrders)
             ->get()
             ->each(function (Position $position) use ($globalRule) {
@@ -105,17 +106,37 @@ class EvaluateRulesAction
                 $price = (float) $snapshot->price;
                 $gainPct = $position->gainPct($price);
 
-                $takeProfitHit = $rule->take_profit_pct !== null
+                $holdsSomething = (float) $position->quantity > 0;
+
+                $takeProfitHit = $holdsSomething
+                    && $rule->take_profit_pct !== null
                     && $gainPct >= (float) $rule->take_profit_pct;
 
-                $stopLossPrice = $rule->stopLossPrice(
+                $stopLossPrice = $holdsSomething ? $rule->stopLossPrice(
                     $position,
                     $rule->isTrailing() ? PriceSnapshot::peakFor($position->symbol) : null
-                );
+                ) : null;
 
                 $stopLossHit = $stopLossPrice !== null && $price <= $stopLossPrice;
 
-                if (! $takeProfitHit && ! $stopLossHit) {
+                $buyTriggerPrice = $rule->buys() ? $rule->buyTriggerPrice($position) : null;
+                $buyHit = $buyTriggerPrice !== null && $price <= $buyTriggerPrice;
+
+                if (! $takeProfitHit && ! $stopLossHit && ! $buyHit) {
+                    return;
+                }
+
+                // A sell and a buy cannot both be right at one price, and selling wins: getting
+                // out of something is never made safer by adding to it first.
+                if ($buyHit && ! $takeProfitHit && ! $stopLossHit) {
+                    if ($rule->alertsOnly()) {
+                        $this->alert($position, $rule, 'buy', $price);
+                    } else {
+                        $this->placeOrder->handle($position, 'buy', $rule, $rule->buyQuantity($position, $price));
+                    }
+
+                    $position->update(['last_triggered_at' => Carbon::now()]);
+
                     return;
                 }
 
