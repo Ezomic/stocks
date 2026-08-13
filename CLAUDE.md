@@ -30,6 +30,8 @@ php artisan ibkr:evaluate-rules     # check TP/SL thresholds (runs via scheduler
 php artisan ibkr:sync-orders        # update order statuses (runs via scheduler)
 php artisan ibkr:tickle             # keep gateway session alive (runs via scheduler)
 php artisan prices:prune            # delete snapshots past the retention window (runs daily)
+php artisan portfolio:record        # record today's portfolio value per currency (runs daily)
+php artisan ibkr:reconcile-positions # compare local quantities with the broker (runs daily)
 ```
 
 ## IBKR Client Portal Gateway setup
@@ -102,7 +104,9 @@ The scheduler runs:
 - `ibkr:sync-orders` — every 2 minutes
 - `ibkr:tickle` — every 15 minutes
 - `queue:work --stop-when-empty` — every minute, delivers queued order notifications
+- `portfolio:record` — daily at 02:00, ahead of the prune so no day is lost to retention
 - `prices:prune` — daily at 02:15
+- `ibkr:reconcile-positions` — daily at 02:30
 
 ## Routes
 
@@ -134,17 +138,27 @@ The scheduler runs:
 | `GET /rules/{id}/edit` | `RuleController@edit` | |
 | `PUT /rules/{id}` | `RuleController@update` | |
 | `DELETE /rules/{id}` | `RuleController@destroy` | |
-| `GET /orders` | `OrderController@index` | Read-only, paginated |
+| `GET /orders` | `OrderController@index` | Paginated; cancel button on live orders |
+| `POST /orders/{id}/cancel` | `OrderController@cancel` | Ask IBKR to cancel a live order |
+| `GET /orders/export` | `ExportController@orders` | CSV, streamed, optional `?status=` |
+| `GET /positions/export` | `ExportController@positions` | CSV; registered before `positions/{position}` |
+| `GET /trades` | `TradeHistoryController@index` | Realised profit per closed trade, average-cost |
+| `GET /watchlist` | `WatchlistController@index` | Watchlist plus IBKR contract lookup |
+| `POST /watchlist` | `WatchlistController@store` | |
+| `DELETE /watchlist/{id}` | `WatchlistController@destroy` | |
+| `GET /rules-replay` | `RuleReplayController` | Replay a proposed rule over stored prices |
 | `GET /settings` | `SettingsController@index` | |
 | `POST /settings/trading` | `SettingsController@updateTrading` | Kill switch: pause/resume all trading |
 | `POST /settings/dry-run` | `SettingsController@updateDryRun` | Toggle dry run |
+| `POST /settings/dry-run/clear` | `SettingsController@clearDryRun` | Delete simulated orders only |
 | `POST /settings/sync-prices` | `SettingsController@syncPrices` | Manual trigger |
 | `POST /settings/evaluate-rules` | `SettingsController@evaluateRules` | Manual trigger |
 | `POST /settings/sync-orders` | `SettingsController@syncOrders` | Manual trigger |
 | `POST /settings/two-factor` | `TwoFactorController@store` | Begin 2FA enrolment |
 | `POST /settings/two-factor/confirm` | `TwoFactorController@confirm` | Confirm with a TOTP code |
-| `POST /settings/two-factor/recovery-codes` | `TwoFactorController@recoveryCodes` | Regenerate recovery codes |
-| `DELETE /settings/two-factor` | `TwoFactorController@destroy` | Turn 2FA off |
+| `POST /settings/two-factor/recovery-codes` | `TwoFactorController@recoveryCodes` | Regenerate; needs the password |
+| `POST /settings/two-factor/show-recovery-codes` | `TwoFactorController@showRecoveryCodes` | Reveal; needs the password |
+| `DELETE /settings/two-factor` | `TwoFactorController@destroy` | Turn 2FA off; needs the password |
 | `POST /settings/api-tokens` | `ApiTokenController@store` | |
 | `DELETE /settings/api-tokens/{token}` | `ApiTokenController@destroy` | |
 | `POST /ibkr/reauth` | `SettingsController@reauth` | Re-authenticate gateway session |
@@ -156,10 +170,12 @@ The scheduler runs:
 | Model | Notes |
 |-------|-------|
 | `Position` | Symbol, quantity, avg buy price, IBKR conid. `gainPct(float): float`. `last_triggered_at` holds the cooldown. `forActiveAccount()` scope limits queries to the account `IBKR_MODE` resolves to. |
-| `Rule` | Take-profit %, stop-loss %, cooldown length. `isInCooldown(Position): bool` — the window is per position, the rule only supplies its length. `position_id` null = global default. One rule per position (unique index), one global rule (validated). |
-| `Order` | Append-only order log. Statuses: `pending → placed → filled / cancelled / failed`, plus `simulated` for dry-run records. |
+| `Rule` | Thresholds, sizing and outcome for one position, or the global default when `position_id` is null. `action` is `order` or `notify`. `stop_loss_type` is `entry` or `trailing`. `sell_pct` is how much of the holding to sell. `buy_below_pct` + `buy_amount` + `max_position_value` describe a buy. `isInCooldown(Position): bool` — the window is per position, the rule only supplies its length. One rule per position (unique index), one global rule (validated). |
+| `Order` | Append-only order log, kept when its position is deleted. Statuses: `pending → placed → filled / cancelled / failed`, plus `simulated` for dry runs and `unreconciled` for an order the broker stopped reporting. Carries `symbol`, `cost_basis` and `currency` captured at order time, `remaining_quantity` after a fill, and `cancel_requested_at`. `realisedProfit()` is average-cost, not FIFO. |
 | `PriceSnapshot` | Append-only. No `updated_at`. Index on `(symbol, fetched_at)`. `isStale()` against `ibkr.max_price_age_minutes`. |
 | `Setting` | Key/value store for runtime toggles: `trading_enabled` (default on), `dry_run` (default off). |
+| `PortfolioValue` | Daily total per currency. Its own aggregate so it outlives snapshot pruning. |
+| `WatchlistItem` | A symbol followed but not held. Priced alongside positions. |
 | `User` | Single admin user, created by seeder. Optional TOTP 2FA; secret and recovery codes encrypted at rest. |
 
 ### Services (`app/Services/`)
@@ -168,14 +184,21 @@ The scheduler runs:
 - **`IbkrAuthService`** — session keepalive (`tickle`), status check, reauthentication with polling. The status is cached briefly so a page render never waits on the gateway.
 - **`OrderNotifier`** — logs every order event, then dispatches a queued notification. Swallows dispatch failures so a mail outage cannot take a scheduled run down.
 - **`TwoFactorAuthenticator`** — TOTP secrets, verification, QR code SVG and single-use recovery codes.
+- **`MarketHours`** — asks IBKR for a contract's trading hours and answers whether the venue is open. No calendar lives in this repo: half-days and holidays are what a weekday-and-clock check gets wrong. Cached per contract; crypto short-circuits before any call.
 
 ### Actions (`app/Actions/`)
 
-- **`SyncPricesAction`** — fetches prices in batches of 50 conids, for the active account only. Retries once on empty snapshot response (IBKR quirk: first call returns `{}`).
-- **`EvaluateRulesAction`** — the safety gate. In order it: stops if trading is paused, stops if the gateway session is down, skips positions outside the active account, skips positions with no quantity left, skips positions with an order still in flight, skips stale prices, then fires `PlaceOrderAction` when a threshold is crossed and the position is not in cooldown. Stamps the cooldown on the position.
+- **`SyncPricesAction`** — fetches prices in batches of 50 conids, for the active account plus every watchlist entry, de-duplicated by conid. Retries once on empty snapshot response (IBKR quirk: first call returns `{}`).
+- **`EvaluateRulesAction`** — the safety gate, and the order of its checks is the point. It stops if trading is paused, stops if the gateway session is down, skips positions outside the active account, skips positions with an order still in flight, skips stale prices, skips a rule in cooldown, and skips a closed market unless the rule only alerts. Then it decides the outcome: take-profit or stop-loss on a position that holds something, or a buy below the level, with a sell winning if both would trigger. An `order` rule places; a `notify` rule sends `ThresholdCrossed` and places nothing. Either way the cooldown is stamped on the position.
+
+  There is deliberately **no quantity filter on the query**: a buy rule is exactly what applies to a position holding nothing, so the sell path checks the quantity for itself.
 - **`PlaceOrderAction`** — places a market order via IBKR. Handles the confirmation-challenge response shape (`messageIds`). Checks every response and only records `placed` once a non-empty broker order id comes back; anything else is `failed` with the reason. Writes a `simulated` record and skips the gateway entirely during a dry run.
-- **`SyncOrderStatusAction`** — polls `GET /v1/api/iserver/account/orders`, updates `placed` orders to `filled` or `cancelled`, and applies a fill to the position quantity so the same holding is never sold twice.
+- **`SyncOrderStatusAction`** — polls `GET /v1/api/iserver/account/orders` and updates `placed` orders. A fill adjusts the position quantity so the same holding is never sold twice, and a **buy** fill also recalculates `avg_buy_price`: leaving it alone would make every gain, threshold and realised figure afterwards measure against a price that was never paid. An order the broker stops reporting past `order_reconcile_timeout_minutes` is settled against the broker's own position and marked `unreconciled`, which takes it out of flight so it cannot freeze the position for good.
 - **`ImportPositionsFromIbkrAction`** — upserts positions from `GET /v1/api/portfolio/{accountId}/positions/0`.
+- **`CancelOrderAction`** — asks IBKR to cancel a live order. IBKR only acknowledges the request, so this records `cancel_requested_at` and lets the status sync settle the outcome rather than claiming the order is gone.
+- **`ReplayRuleAction`** — runs a proposed rule over stored snapshots and reports where it would have fired. Honours the cooldown, and walks a trailing peak forward so it never sees prices from the future of the point being evaluated.
+- **`RecordPortfolioValueAction`** — writes the daily per-currency total. A position with no price contributes to neither value nor cost, since counting cost alone would show a permanent phantom loss.
+- **`ReconcilePositionsAction`** — records what the broker says each position holds without changing it. Drift is reported, never silently corrected.
 
 ### Scheduler (`routes/console.php`)
 
@@ -185,7 +208,9 @@ Schedule::command('ibkr:evaluate-rules')->everyMinute()->withoutOverlapping();
 Schedule::command('ibkr:sync-orders')->everyTwoMinutes()->withoutOverlapping();
 Schedule::command('ibkr:tickle')->everyFifteenMinutes();
 Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
+Schedule::command('portfolio:record')->dailyAt('02:00');
 Schedule::command('prices:prune')->dailyAt('02:15');
+Schedule::command('ibkr:reconcile-positions')->dailyAt('02:30');
 ```
 
 `withoutOverlapping()` is critical — prevents double-triggering rules if a cycle runs slow.
@@ -198,6 +223,20 @@ rule evaluation share one answer. `IbkrAuthService::reauthenticate()` clears and
 
 SQLite WAL mode is enabled in `AppServiceProvider::boot()` to handle concurrent scheduler
 writes without lock errors.
+
+## What a rule can express
+
+| | |
+|---|---|
+| Take profit | Sell when gain reaches a percentage of the entry price |
+| Stop loss | Sell on a fall, measured from the entry price or from the highest price on record (`stop_loss_type`) |
+| Sell size | `sell_pct` of what is held at the moment it fires; whole units for equities, fractions for crypto |
+| Buy | `buy_below_pct` under the average paid, spending `buy_amount`, never past `max_position_value` |
+| Outcome | `action` of `order` to trade, or `notify` to alert and place nothing |
+| Cooldown | Per position, shared by every outcome above |
+
+A rule attached to a position wins whether or not it is active: switching it off means stop
+trading this position, not fall back on the global default.
 
 ## Safety controls
 
@@ -212,7 +251,7 @@ Two runtime switches live in the `settings` table and are toggled from the setti
 
 Both are surfaced as banners on the dashboard whenever they are not in their normal state.
 
-## Buy sizing
+### Buy sizing
 
 A sell is self-sizing: the position says how much is held. A buy is not, and the app has no
 notion of cash or buying power, so a percentage of it cannot be computed.
@@ -256,7 +295,8 @@ Beyond the gateway settings above:
 | `STOCKS_SNAPSHOT_RETENTION_DAYS` | 30 | Price snapshot retention; 0 keeps everything |
 | `STOCKS_NOTIFICATIONS_ENABLED` | true | Master switch for order notifications |
 | `STOCKS_NOTIFICATION_CHANNELS` | mail | Comma separated notification channels |
-| `STOCKS_NOTIFICATION_EVENTS` | placed,filled,failed | Which order events notify |
+| `STOCKS_NOTIFICATION_EVENTS` | placed,filled,failed,cancelled,unreconciled | Which order events notify |
+| `IBKR_ORDER_RECONCILE_TIMEOUT_MINUTES` | 30 | How long a placed order may go unconfirmed before it is settled against the broker |
 
 ## Key gotchas
 
@@ -285,7 +325,8 @@ Beyond the gateway settings above:
    refuses to run at all without an authenticated session. Both show on the dashboard.
 
 7. **Pre-live checklist** — before setting `IBKR_MODE=live`:
-   - Run for a week with dry run on and read back the simulated orders
+   - Replay your rules over stored prices, then run a week with dry run on and read back the
+     simulated orders
    - Review cooldown values on all rules
    - Confirm no leftover paper positions are still in the table (the dashboard warns about them)
    - Turn on two-factor authentication in settings
