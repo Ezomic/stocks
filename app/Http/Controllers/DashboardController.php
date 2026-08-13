@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\PortfolioValue;
 use App\Models\Position;
 use App\Models\PriceSnapshot;
 use App\Models\Rule;
@@ -89,6 +90,10 @@ class DashboardController extends Controller
             'closedMarketCount' => $positions->filter(
                 fn (Position $p): bool => in_array($p->id, $tradedIds, true) && $marketHours->isOpen($p) === false
             )->count(),
+            'valueHistory' => PortfolioValue::where('recorded_on', '>=', now()->subMonths(6))
+                ->orderBy('recorded_on')
+                ->get()
+                ->groupBy('currency'),
             'globalRule' => Rule::whereNull('position_id')->first(),
             'tradingEnabled' => Setting::tradingEnabled(),
             'dryRun' => Setting::dryRun(),
