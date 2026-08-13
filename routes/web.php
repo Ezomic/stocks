@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RuleController;
@@ -27,6 +28,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/positions/export', [ExportController::class, 'positions'])->name('positions.export');
     Route::resource('positions', PositionController::class)->except(['show'])->names('positions');
     Route::get('/positions/{position}', [PositionController::class, 'show'])->name('positions.show');
 
@@ -38,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/watchlist/{watchlistItem}', [WatchlistController::class, 'destroy'])->name('watchlist.destroy');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/export', [ExportController::class, 'orders'])->name('orders.export');
     Route::get('/trades', [TradeHistoryController::class, 'index'])->name('trades.index');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 
