@@ -212,6 +212,21 @@ Two runtime switches live in the `settings` table and are toggled from the setti
 
 Both are surfaced as banners on the dashboard whenever they are not in their normal state.
 
+## Buy sizing
+
+A sell is self-sizing: the position says how much is held. A buy is not, and the app has no
+notion of cash or buying power, so a percentage of it cannot be computed.
+
+The model chosen is **a fixed cash amount per trigger**, in the position currency, clamped by
+whatever headroom is left under the rule's `max_position_value`. A share count was rejected
+because it ages badly as the price moves, and a percentage of buying power because it needs an
+account balance nothing currently fetches.
+
+`max_position_value` is required whenever `buy_below_pct` is set. An uncapped buy rule keeps
+firing all the way down, which is how a small mistake becomes a large one.
+
+When a sell and a buy would both trigger at the same price, the sell wins.
+
 ## Paper vs live trading
 
 Controlled by a single `.env` variable:

@@ -48,6 +48,23 @@
             <input type="number" name="sell_pct" value="{{ old('sell_pct', $rule->sell_pct) }}" step="0.01" min="0.01" max="100">
             <span style="color:var(--muted);font-size:12px">Percent of the quantity held at the time. 100 sells the whole position; a smaller figure takes part off and leaves the rest running.</span>
         </div>
+        <div class="form-group" style="border-top:1px solid var(--border);padding-top:12px">
+            <label>Buy back below (optional)</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div>
+                    <input type="number" name="buy_below_pct" value="{{ old('buy_below_pct', $rule->buy_below_pct) }}" step="0.01" placeholder="% below avg">
+                    <span style="color:var(--muted);font-size:12px">% under the average paid</span>
+                </div>
+                <div>
+                    <input type="number" name="buy_amount" value="{{ old('buy_amount', $rule->buy_amount) }}" step="0.01" placeholder="cash each time">
+                    <span style="color:var(--muted);font-size:12px">Amount to spend per trigger</span>
+                </div>
+                <div>
+                    <input type="number" name="max_position_value" value="{{ old('max_position_value', $rule->max_position_value) }}" step="0.01" placeholder="never exceed">
+                    <span style="color:var(--muted);font-size:12px">Hard cap on position value</span>
+                </div>
+            </div>
+        </div>
         <div class="form-group">
             <label>Cooldown (minutes)</label>
             <input type="number" name="cooldown_minutes" value="{{ old('cooldown_minutes', $rule->cooldown_minutes) }}" min="1" required>

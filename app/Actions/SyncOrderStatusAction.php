@@ -182,11 +182,21 @@ class SyncOrderStatusAction
             return;
         }
 
+        $held = (float) $position->quantity;
         $delta = $order->side === 'sell' ? -$filledQuantity : $filledQuantity;
+        $remaining = max(0.0, $held + $delta);
 
-        $remaining = max(0.0, (float) $position->quantity + $delta);
+        $attributes = ['quantity' => $remaining];
 
-        $position->update(['quantity' => $remaining]);
+        // Buying more moves the average paid. Leaving it alone would make every gain, every
+        // threshold and every realised figure afterwards measure against a price that was
+        // never paid. A sell does not change the average of what is left.
+        if ($order->side === 'buy' && $order->fill_price !== null && $remaining > 0.0) {
+            $attributes['avg_buy_price'] =
+                (($held * (float) $position->avg_buy_price) + ($filledQuantity * (float) $order->fill_price)) / $remaining;
+        }
+
+        $position->update($attributes);
         $order->update(['remaining_quantity' => $remaining]);
     }
 

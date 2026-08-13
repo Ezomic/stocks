@@ -24,6 +24,9 @@ class RuleFactory extends Factory
             'stop_loss_pct' => fake()->randomFloat(2, 5, 20),
             'stop_loss_type' => 'entry',
             'sell_pct' => 100,
+            'buy_below_pct' => null,
+            'buy_amount' => null,
+            'max_position_value' => null,
             'is_active' => true,
             'cooldown_minutes' => 60,
         ];

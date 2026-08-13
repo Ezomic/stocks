@@ -32,6 +32,11 @@ class StoreRuleRequest extends FormRequest
             'stop_loss_pct' => ['nullable', 'numeric', 'min:0.01'],
             'stop_loss_type' => ['nullable', 'in:entry,trailing'],
             'sell_pct' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
+            'buy_below_pct' => ['nullable', 'numeric', 'min:0.01'],
+            // Both are required together: a buy threshold with no amount cannot be sized, and
+            // an uncapped buy rule keeps firing all the way down.
+            'buy_amount' => ['nullable', 'required_with:buy_below_pct', 'numeric', 'min:0.01'],
+            'max_position_value' => ['nullable', 'required_with:buy_below_pct', 'numeric', 'min:0.01'],
             'is_active' => ['boolean'],
             'cooldown_minutes' => ['required', 'integer', 'min:1'],
         ];
@@ -73,6 +78,8 @@ class StoreRuleRequest extends FormRequest
     {
         return [
             'position_id.unique' => 'That position already has a rule. Edit the existing rule instead.',
+            'buy_amount.required_with' => 'A buy rule needs an amount to spend each time it fires.',
+            'max_position_value.required_with' => 'A buy rule needs a cap on total position value, so it cannot keep buying all the way down.',
         ];
     }
 
