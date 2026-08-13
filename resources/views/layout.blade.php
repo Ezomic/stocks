@@ -13,6 +13,7 @@
     <a href="/" @class(['active' => request()->is('/')])>Dashboard</a>
     <a href="/positions" @class(['active' => request()->is('positions*')])>Positions</a>
     <a href="/rules" @class(['active' => request()->is('rules*')])>Rules</a>
+    <a href="/watchlist" class="{{ request()->is('watchlist') ? 'active' : '' }}">Watchlist</a>
     <a href="/trades" class="{{ request()->is('trades') ? 'active' : '' }}">Trades</a>
     <a href="/orders" @class(['active' => request()->is('orders*')])>Orders</a>
     <a href="/settings" @class(['active' => request()->is('settings*')])>Settings</a>

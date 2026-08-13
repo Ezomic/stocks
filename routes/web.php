@@ -11,6 +11,7 @@ use App\Http\Controllers\RuleReplayController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TradeHistoryController;
 use App\Http\Controllers\TwoFactorController;
+use App\Http\Controllers\WatchlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -31,6 +32,10 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('rules', RuleController::class)->except(['show'])->names('rules');
     Route::get('/rules-replay', RuleReplayController::class)->name('rules.replay');
+
+    Route::get('/watchlist', [WatchlistController::class, 'index'])->name('watchlist.index');
+    Route::post('/watchlist', [WatchlistController::class, 'store'])->name('watchlist.store');
+    Route::delete('/watchlist/{watchlistItem}', [WatchlistController::class, 'destroy'])->name('watchlist.destroy');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/trades', [TradeHistoryController::class, 'index'])->name('trades.index');
