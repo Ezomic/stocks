@@ -3,7 +3,10 @@
 @section('content')
 <div class="page-header">
     <h1>Positions</h1>
-    <a href="/positions/create" class="btn btn-primary">+ Add position</a>
+    <div style="display:flex;gap:8px">
+        <a href="{{ route('positions.export') }}" class="btn">Export CSV</a>
+        <a href="/positions/create" class="btn btn-primary">+ Add position</a>
+    </div>
 </div>
 @if($positions->isEmpty())
     <div class="card" style="color:var(--muted);text-align:center;padding:40px;">No positions yet.</div>

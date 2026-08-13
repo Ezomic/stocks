@@ -3,6 +3,7 @@
 @section('content')
 <div class="page-header">
     <h1>Orders</h1>
+    <a href="{{ route('orders.export') }}" class="btn">Export CSV</a>
 </div>
 @if($orders->isEmpty())
     <div class="card" style="color:var(--muted);text-align:center;padding:40px;">No orders yet.</div>
