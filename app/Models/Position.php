@@ -143,12 +143,25 @@ class Position extends Model
         return strtoupper($this->market) === 'CRYPTO';
     }
 
+    /**
+     * A negative quantity is a short. The broker can report one and the import will store it,
+     * so it has to display honestly even though the engine will not trade it.
+     */
+    public function isShort(): bool
+    {
+        return (float) $this->quantity < 0;
+    }
+
     public function gainPct(float $currentPrice): float
     {
         if ((float) $this->avg_buy_price === 0.0) {
             return 0.0;
         }
 
-        return ($currentPrice - (float) $this->avg_buy_price) / (float) $this->avg_buy_price * 100;
+        $move = ($currentPrice - (float) $this->avg_buy_price) / (float) $this->avg_buy_price * 100;
+
+        // A short gains when the price falls, so the same move means the opposite outcome.
+        // Without this a winning short reads as a loss on the dashboard.
+        return $this->isShort() ? -$move : $move;
     }
 }

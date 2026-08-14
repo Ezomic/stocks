@@ -251,6 +251,20 @@ Two runtime switches live in the `settings` table and are toggled from the setti
 
 Both are surfaced as banners on the dashboard whenever they are not in their normal state.
 
+### Short positions
+
+A negative quantity is a short. The broker can report one and `ImportPositionsFromIbkrAction`
+will store it, so the app has to cope with them existing.
+
+The decision is **accept but never trade**. `gainPct()` inverts for a short, because it gains
+when the price falls and without that a winning short reads as a loss. `EvaluateRulesAction`
+returns early on any short, explicitly rather than as a side effect of a quantity check, and
+they are badged as not traded wherever positions are listed.
+
+Take-profit, stop-loss and buy-back all mean something different on a negative position, and
+guessing at that with real money is worse than declining to act. Supporting them properly is a
+separate piece of design, not a tweak to the existing thresholds.
+
 ### Buy sizing
 
 A sell is self-sizing: the position says how much is held. A buy is not, and the app has no
