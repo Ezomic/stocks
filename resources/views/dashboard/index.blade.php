@@ -146,6 +146,9 @@
             <td><span class="badge">{{ $p->market }}</span></td>
             <td>
                 {{ rtrim(rtrim($p->quantity, '0'), '.') }}
+                @if($p->isShort())
+                    <span class="badge badge-orange" title="A negative quantity is a short">short</span>
+                @endif
                 @if($p->hasDrift())
                     <span class="badge badge-orange" title="IBKR reports {{ rtrim(rtrim($p->broker_quantity, '0'), '.') }}">drift</span>
                 @endif

@@ -103,6 +103,14 @@ class EvaluateRulesAction
                     return;
                 }
 
+                // Shorts are accepted and displayed but never traded. Take-profit, stop-loss
+                // and buy-back all mean something different when the position is negative, and
+                // guessing at that with real money is worse than declining to act. This is a
+                // decision, recorded in web/CLAUDE.md, not an accident of the quantity checks.
+                if ($position->isShort()) {
+                    return;
+                }
+
                 $price = (float) $snapshot->price;
                 $gainPct = $position->gainPct($price);
 
