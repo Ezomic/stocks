@@ -4,6 +4,7 @@
 <div class="page-header">
     <h1>{{ $position->symbol }} <span style="font-weight:400;color:var(--muted);font-size:14px">{{ $position->market }}</span></h1>
     <div style="display:flex;gap:8px">
+        <a href="{{ route('manual-orders.create', ['position_id' => $position->id]) }}" class="btn">Log order</a>
         <a href="/positions/{{ $position->id }}/edit" class="btn">Edit</a>
         <a href="/positions" class="btn">Back</a>
     </div>
