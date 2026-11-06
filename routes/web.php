@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\ManualOrderController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RuleController;
@@ -38,6 +39,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/watchlist', [WatchlistController::class, 'index'])->name('watchlist.index');
     Route::post('/watchlist', [WatchlistController::class, 'store'])->name('watchlist.store');
     Route::delete('/watchlist/{watchlistItem}', [WatchlistController::class, 'destroy'])->name('watchlist.destroy');
+
+    Route::resource('manual-orders', ManualOrderController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update'])
+        ->parameters(['manual-orders' => 'manualOrder'])
+        ->names('manual-orders');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/export', [ExportController::class, 'orders'])->name('orders.export');

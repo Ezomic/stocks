@@ -16,6 +16,7 @@
     <a href="/watchlist" class="{{ request()->is('watchlist') ? 'active' : '' }}">Watchlist</a>
     <a href="/trades" class="{{ request()->is('trades') ? 'active' : '' }}">Trades</a>
     <a href="/orders" @class(['active' => request()->is('orders*')])>Orders</a>
+    <a href="/manual-orders" @class(['active' => request()->is('manual-orders*')])>Order log</a>
     <a href="/settings" @class(['active' => request()->is('settings*')])>Settings</a>
     <form method="POST" action="/logout" style="margin:0">
         @csrf

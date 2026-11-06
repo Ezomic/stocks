@@ -140,6 +140,11 @@ The scheduler runs:
 | `DELETE /rules/{id}` | `RuleController@destroy` | |
 | `GET /orders` | `OrderController@index` | Paginated; cancel button on live orders |
 | `POST /orders/{id}/cancel` | `OrderController@cancel` | Ask IBKR to cancel a live order |
+| `GET /manual-orders` | `ManualOrderController@index` | Order log, optional `?status=` |
+| `GET /manual-orders/create` | `ManualOrderController@create` | `?position_id=` and `?side=` prefill |
+| `POST /manual-orders` | `ManualOrderController@store` | Records only, sends nothing to IBKR |
+| `GET /manual-orders/{id}/edit` | `ManualOrderController@edit` | |
+| `PUT /manual-orders/{id}` | `ManualOrderController@update` | |
 | `GET /orders/export` | `ExportController@orders` | CSV, streamed, optional `?status=` |
 | `GET /positions/export` | `ExportController@positions` | CSV; registered before `positions/{position}` |
 | `GET /trades` | `TradeHistoryController@index` | Realised profit per closed trade, average-cost |
@@ -172,6 +177,7 @@ The scheduler runs:
 | `Position` | Symbol, quantity, avg buy price, IBKR conid. `gainPct(float): float`. `last_triggered_at` holds the cooldown. `forActiveAccount()` scope limits queries to the account `IBKR_MODE` resolves to. |
 | `Rule` | Thresholds, sizing and outcome for one position, or the global default when `position_id` is null. `action` is `order` or `notify`. `stop_loss_type` is `entry` or `trailing`. `sell_pct` is how much of the holding to sell. `buy_below_pct` + `buy_amount` + `max_position_value` describe a buy. `isInCooldown(Position): bool` — the window is per position, the rule only supplies its length. One rule per position (unique index), one global rule (validated). |
 | `Order` | Append-only order log, kept when its position is deleted. Statuses: `pending → placed → filled / cancelled / failed`, plus `simulated` for dry runs and `unreconciled` for an order the broker stopped reporting. Carries `symbol`, `cost_basis` and `currency` captured at order time, `remaining_quantity` after a fill, and `cancel_requested_at`. `realisedProfit()` is average-cost, not FIFO. |
+| `ManualOrder` | Record-only log of buys and sells the owner placed in IBKR by hand. Statuses `planned / filled / cancelled`. Optional `position_id` (nulled if the position is deleted), `price`, `fees`, `order_date`, `note`. Never sent to the broker and never changes a position: holdings stay broker-imported. A planned sell is validated against the holding minus other planned sells. A regression test (`ManualOrderNeverTradesTest`) fails if the feature references the broker client or HTTP. |
 | `PriceSnapshot` | Append-only. No `updated_at`. Index on `(symbol, fetched_at)`. `isStale()` against `ibkr.max_price_age_minutes`. |
 | `Setting` | Key/value store for runtime toggles: `trading_enabled` (default on), `dry_run` (default off). |
 | `PortfolioValue` | Daily total per currency. Its own aggregate so it outlives snapshot pruning. |
@@ -194,6 +200,7 @@ The scheduler runs:
   There is deliberately **no quantity filter on the query**: a buy rule is exactly what applies to a position holding nothing, so the sell path checks the quantity for itself.
 - **`PlaceOrderAction`** — places a market order via IBKR. Handles the confirmation-challenge response shape (`messageIds`). Checks every response and only records `placed` once a non-empty broker order id comes back; anything else is `failed` with the reason. Writes a `simulated` record and skips the gateway entirely during a dry run.
 - **`SyncOrderStatusAction`** — polls `GET /v1/api/iserver/account/orders` and updates `placed` orders. A fill adjusts the position quantity so the same holding is never sold twice, and a **buy** fill also recalculates `avg_buy_price`: leaving it alone would make every gain, threshold and realised figure afterwards measure against a price that was never paid. An order the broker stops reporting past `order_reconcile_timeout_minutes` is settled against the broker's own position and marked `unreconciled`, which takes it out of flight so it cannot freeze the position for good.
+- **`SaveManualOrderAction`** — stores or updates a `ManualOrder`, taking symbol and currency from the linked position. Touches no broker and no position.
 - **`ImportPositionsFromIbkrAction`** — upserts positions from `GET /v1/api/portfolio/{accountId}/positions/0`.
 - **`CancelOrderAction`** — asks IBKR to cancel a live order. IBKR only acknowledges the request, so this records `cancel_requested_at` and lets the status sync settle the outcome rather than claiming the order is gone.
 - **`ReplayRuleAction`** — runs a proposed rule over stored snapshots and reports where it would have fired. Honours the cooldown, and walks a trailing peak forward so it never sees prices from the future of the point being evaluated.
