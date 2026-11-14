@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -43,20 +44,24 @@ class PriceSnapshot extends Model
     }
 
     /**
-     * The highest price on record for a symbol. Snapshots are pruned, so this is the peak
-     * within the retention window rather than since the position was opened. Callers show
-     * the window alongside the number so the difference is visible rather than assumed.
+     * The highest price on record for a symbol since a given moment. Snapshots are pruned, so
+     * this is never older than the retention window. Callers show the window alongside the
+     * number so the difference is visible rather than assumed.
      */
-    public static function peakFor(string $symbol): ?float
+    public static function peakFor(string $symbol, ?CarbonInterface $since = null): ?float
     {
-        $peak = self::where('symbol', $symbol)->max('price');
+        $peak = self::where('symbol', $symbol)
+            ->when($since, fn ($query) => $query->where('fetched_at', '>=', $since))
+            ->max('price');
 
         return is_numeric($peak) ? (float) $peak : null;
     }
 
-    public static function earliestFor(string $symbol): ?Carbon
+    public static function earliestFor(string $symbol, ?CarbonInterface $since = null): ?Carbon
     {
-        $earliest = self::where('symbol', $symbol)->min('fetched_at');
+        $earliest = self::where('symbol', $symbol)
+            ->when($since, fn ($query) => $query->where('fetched_at', '>=', $since))
+            ->min('fetched_at');
 
         return is_string($earliest) ? Carbon::parse($earliest) : null;
     }

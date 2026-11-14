@@ -122,7 +122,7 @@ class EvaluateRulesAction
 
                 $stopLossPrice = $holdsSomething ? $rule->stopLossPrice(
                     $position,
-                    $rule->isTrailing() ? PriceSnapshot::peakFor($position->symbol) : null
+                    $rule->isTrailing() ? PriceSnapshot::peakFor($position->symbol, $position->enteredAt()) : null
                 ) : null;
 
                 $stopLossHit = $stopLossPrice !== null && $price <= $stopLossPrice;

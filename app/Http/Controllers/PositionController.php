@@ -64,7 +64,8 @@ class PositionController extends Controller
         $gainPct = $currentPrice ? $position->gainPct((float) $currentPrice) : null;
 
         $rule = $position->activeRule(Rule::whereNull('position_id')->first());
-        $peakPrice = PriceSnapshot::peakFor($position->symbol);
+        $enteredAt = $position->enteredAt();
+        $peakPrice = PriceSnapshot::peakFor($position->symbol, $enteredAt);
 
         return view('positions.show', [
             'position' => $position,
@@ -74,7 +75,7 @@ class PositionController extends Controller
             'gainPct' => $gainPct,
             'governingRule' => $rule,
             'peakPrice' => $peakPrice,
-            'peakSince' => PriceSnapshot::earliestFor($position->symbol),
+            'peakSince' => PriceSnapshot::earliestFor($position->symbol, $enteredAt),
             'stopLossPrice' => $rule?->stopLossPrice($position, $peakPrice),
             'takeProfitPrice' => $rule?->takeProfitPrice($position),
         ]);

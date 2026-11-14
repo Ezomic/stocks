@@ -22,6 +22,7 @@ beforeEach(function (): void {
         'quantity' => '10',
         'currency' => 'USD',
         'ibkr_con_id' => '265598',
+        'created_at' => now()->subDay(),
     ]);
 });
 
@@ -200,4 +201,48 @@ it('shows the peak and both trigger prices on the position page', function (): v
         ->assertSee('USD 200.00')
         ->assertSee('USD 180.00')
         ->assertSee('not necessarily since you bought');
+});
+
+it('ignores a peak from before the position was opened', function (): void {
+    $position = Position::factory()->create([
+        'symbol' => 'ACME',
+        'avg_buy_price' => '100.00',
+        'quantity' => '10',
+        'currency' => 'USD',
+        'ibkr_con_id' => '1001',
+        'created_at' => now()->subMinutes(10),
+    ]);
+
+    trailingRule($position);
+
+    // Watched at 120 before buying at 100. A 10% trail off 120 would sit at 108.
+    PriceSnapshot::create(['symbol' => 'ACME', 'price' => '120.00', 'currency' => 'USD', 'source' => 'ibkr', 'fetched_at' => now()->subHour()]);
+    PriceSnapshot::create(['symbol' => 'ACME', 'price' => '100.00', 'currency' => 'USD', 'source' => 'ibkr', 'fetched_at' => now()]);
+
+    app(EvaluateRulesAction::class)->handle();
+
+    expect(Order::count())->toBe(0)
+        ->and(PriceSnapshot::peakFor('ACME', $position->enteredAt()))->toBe(100.0);
+});
+
+it('starts the peak again from the latest filled buy', function (): void {
+    trailingRule($this->position);
+
+    priceAt('150.00', 120);
+
+    Order::factory()->create([
+        'position_id' => $this->position->id,
+        'side' => 'buy',
+        'status' => 'filled',
+        'filled_at' => now()->subMinutes(30),
+    ]);
+
+    priceAt('105.00', 20);
+    priceAt('100.00', 0);
+
+    app(EvaluateRulesAction::class)->handle();
+
+    // Off 150 the stop would be 135 and fire; off the 105 seen since the buy it is 94.50.
+    expect(Order::where('side', 'sell')->count())->toBe(0)
+        ->and(PriceSnapshot::peakFor('AAPL', $this->position->enteredAt()))->toBe(105.0);
 });
