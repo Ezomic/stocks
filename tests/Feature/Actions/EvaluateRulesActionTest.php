@@ -9,6 +9,7 @@ use App\Models\PriceSnapshot;
 use App\Models\Rule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\IbkrFakeResponses;
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
@@ -195,4 +196,36 @@ it('skips positions without a price snapshot', function (): void {
     app(EvaluateRulesAction::class)->handle();
 
     expect(Order::count())->toBe(0);
+});
+
+it('never acts on a zero price, however far below the stop it looks', function (): void {
+    Http::fake(['*' => Http::response(IbkrFakeResponses::orderPlaced(), 200)]);
+
+    $position = Position::factory()->create([
+        'symbol' => 'TSLA',
+        'avg_buy_price' => '200.00',
+        'quantity' => '5',
+        'ibkr_con_id' => '76792991',
+    ]);
+
+    Rule::factory()->create([
+        'position_id' => $position->id,
+        'take_profit_pct' => '20.00',
+        'stop_loss_pct' => '10.00',
+        'is_active' => true,
+        'cooldown_minutes' => 60,
+    ]);
+
+    PriceSnapshot::create([
+        'symbol' => 'TSLA',
+        'price' => '0.00',
+        'currency' => 'USD',
+        'source' => 'ibkr',
+        'fetched_at' => now(),
+    ]);
+
+    app(EvaluateRulesAction::class)->handle();
+
+    expect(Order::count())->toBe(0)
+        ->and($position->fresh()->last_triggered_at)->toBeNull();
 });

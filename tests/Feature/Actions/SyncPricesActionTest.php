@@ -124,3 +124,18 @@ it('records the position currency on the snapshot', function (): void {
 
     expect(PriceSnapshot::latestFor('ASML')->currency)->toBe('EUR');
 });
+
+it('never stores a price IBKR prefixed as prior close or halted', function (string $value): void {
+    Http::fake(['*' => Http::response(IbkrFakeResponses::snapshot([
+        265598 => $value,
+        76792991 => '183.10',
+    ]), 200)]);
+
+    Position::factory()->create(['symbol' => 'AAPL', 'ibkr_con_id' => '265598']);
+    Position::factory()->create(['symbol' => 'TSLA', 'ibkr_con_id' => '76792991']);
+
+    app(SyncPricesAction::class)->handle();
+
+    expect(PriceSnapshot::where('symbol', 'AAPL')->count())->toBe(0)
+        ->and((float) PriceSnapshot::latestFor('TSLA')->price)->toBe(183.10);
+})->with(['halted' => 'H182.40', 'prior close' => 'C182.40', 'zero' => '0', 'negative' => '-1.00', 'empty' => '']);

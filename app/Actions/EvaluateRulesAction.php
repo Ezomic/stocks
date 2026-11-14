@@ -112,6 +112,12 @@ class EvaluateRulesAction
                 }
 
                 $price = (float) $snapshot->price;
+
+                // A non-positive price is bad data, never a real quote. Acting on it would
+                // read as a total loss and fire the stop-loss on every held position.
+                if ($price <= 0) {
+                    return;
+                }
                 $gainPct = $position->gainPct($price);
 
                 $holdsSomething = (float) $position->quantity > 0;
