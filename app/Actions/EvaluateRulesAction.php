@@ -14,11 +14,14 @@ use App\Notifications\ThresholdCrossed;
 use App\Services\IbkrAuthService;
 use App\Services\MarketHours;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 class EvaluateRulesAction
 {
+    public const LOCK = 'evaluate-rules';
+
     public function __construct(
         private readonly PlaceOrderAction $placeOrder,
         private readonly IbkrAuthService $auth,
@@ -44,7 +47,34 @@ class EvaluateRulesAction
         }
     }
 
-    public function handle(): void
+    /**
+     * The scheduled command and the settings button both run through here, so one lock covers
+     * both. withoutOverlapping() on the schedule only serialises scheduler runs, and two runs at
+     * once would each see no open order for a position and both sell it. The expiry only
+     * matters if a run dies holding the lock.
+     *
+     * Returns false when another run already holds the lock and nothing was evaluated.
+     */
+    public function handle(): bool
+    {
+        $lock = Cache::lock(self::LOCK, 600);
+
+        if (! $lock->get()) {
+            Log::info('Rule evaluation is already running. Skipping this run.');
+
+            return false;
+        }
+
+        try {
+            $this->evaluate();
+        } finally {
+            $lock->release();
+        }
+
+        return true;
+    }
+
+    private function evaluate(): void
     {
         if (! Setting::tradingEnabled()) {
             Log::info('Automated trading is paused. Skipping rule evaluation.');
@@ -83,7 +113,7 @@ class EvaluateRulesAction
             ->with('rule')
             ->whereNotIn('id', $positionsWithOpenOrders)
             ->get()
-            ->each(function (Position $position) use ($globalRule) {
+            ->each(function (Position $position) use ($globalRule, $blockingStatuses) {
                 $snapshot = PriceSnapshot::latestFor($position->symbol);
 
                 if (! $snapshot || $snapshot->isStale()) {
@@ -131,6 +161,12 @@ class EvaluateRulesAction
                 $buyHit = $buyTriggerPrice !== null && $price <= $buyTriggerPrice;
 
                 if (! $takeProfitHit && ! $stopLossHit && ! $buyHit) {
+                    return;
+                }
+
+                // The open-order list above was read before any gateway call in this run. Ask
+                // again right before acting, so an order placed since then is never doubled.
+                if ($position->orders()->whereIn('status', $blockingStatuses)->exists()) {
                     return;
                 }
 

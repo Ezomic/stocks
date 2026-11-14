@@ -15,6 +15,8 @@ class EvaluateRulesCommand extends Command
 
     public function handle(EvaluateRulesAction $action): void
     {
-        $action->handle();
+        if (! $action->handle()) {
+            $this->info('Rule evaluation is already running. Skipped.');
+        }
     }
 }
