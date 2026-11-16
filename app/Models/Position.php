@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\PositionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 
 /**
  * @property int $id
@@ -109,6 +111,25 @@ class Position extends Model
     public function latestSnapshot(): HasOne
     {
         return $this->hasOne(PriceSnapshot::class, 'symbol', 'symbol')->latestOfMany('fetched_at');
+    }
+
+    /**
+     * When the current holding began: the row's creation or the latest filled buy, whichever
+     * is later. A trailing stop must not see prices from before this moment, or a peak from a
+     * watchlist period or an earlier holding would put the stop above the price just paid.
+     */
+    public function enteredAt(): CarbonInterface
+    {
+        $lastBuyFill = $this->orders()
+            ->where('side', 'buy')
+            ->where('status', 'filled')
+            ->max('filled_at');
+
+        $lastBuyFill = is_string($lastBuyFill) ? Date::parse($lastBuyFill) : null;
+
+        return $lastBuyFill !== null && $lastBuyFill->isAfter($this->created_at)
+            ? $lastBuyFill
+            : $this->created_at;
     }
 
     /**
