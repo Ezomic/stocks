@@ -39,19 +39,35 @@ class SyncPricesAction
                 $conid = (int) $subject->ibkr_con_id;
                 $row = collect($data)->firstWhere('conid', $conid);
 
-                if (! is_array($row) || ! isset($row['31'])) {
+                $price = is_array($row) ? $this->livePrice($row['31'] ?? null) : null;
+
+                if ($price === null) {
                     continue;
                 }
 
                 PriceSnapshot::create([
                     'symbol' => $subject->symbol,
-                    'price' => is_numeric($row['31']) ? (float) $row['31'] : 0.0,
+                    'price' => $price,
                     'currency' => $subject->currency,
                     'source' => 'ibkr',
                     'fetched_at' => $fetchedAt,
                 ]);
             }
         });
+    }
+
+    /**
+     * IBKR prefixes field 31 with "C" (prior close) or "H" (halted) when there is no live
+     * trade. Neither is a price the rules may act on, and a snapshot is only ever written for
+     * a positive number, because a zero reads as a total loss to the stop-loss check.
+     */
+    private function livePrice(mixed $value): ?float
+    {
+        if (! is_numeric($value) || (float) $value <= 0) {
+            return null;
+        }
+
+        return (float) $value;
     }
 
     /**
