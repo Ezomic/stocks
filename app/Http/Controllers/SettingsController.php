@@ -118,7 +118,9 @@ class SettingsController extends Controller
 
     public function evaluateRules(EvaluateRulesAction $action): RedirectResponse
     {
-        $action->handle();
+        if (! $action->handle()) {
+            return back()->with('error', 'Rule evaluation is already running. Try again in a minute.');
+        }
 
         return back()->with('success', 'Rules evaluated.');
     }
